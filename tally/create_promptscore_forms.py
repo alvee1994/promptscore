@@ -9,10 +9,17 @@ import requests
 import uuid
 import json
 
-API_KEY = "YOUR_TALLY_API_KEY"  # Replace with your key
+import os
+from dotenv import load_dotenv
+load_dotenv()
+
+API_KEY = os.getenv("TALLY_API_KEY", "")
+if not API_KEY:
+    raise SystemExit("TALLY_API_KEY not set in .env")
+
 BASE_URL = "https://api.tally.so/forms"
 HEADERS = {
-    "Authorization": f"Bearer tly-10bPCAzs1AlQLuS4rZXq5RNNazoetbYG",
+    "Authorization": f"Bearer {API_KEY}",
     "Content-Type": "application/json"
 }
 
