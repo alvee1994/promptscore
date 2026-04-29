@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/><title>Prompt Score Weekly Report</title></head>
+<body style="margin:0;padding:0;background:#0B0F1A;font-family:Helvetica Neue,Helvetica,Arial,sans-serif;color:#F0F4FF;">
+
+<div style="display:none;max-height:0;overflow:hidden;">{{brand_name}} appeared in {{mention_count}}/{{total_prompts}} prompts this week &mdash; {{competitor_gap_label}}.</div>
+
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#0B0F1A;">
+<tr><td align="center" style="padding:32px 16px;">
+<table width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;width:100%;background:#141927;border-radius:16px;border:1px solid #1E2740;overflow:hidden;">
+
+  <!-- Header -->
+  <tr><td style="padding:18px 32px;border-bottom:1px solid #1E2740;background:#10172A;">
+    <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+      <td><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#4FFFB0;margin-right:8px;vertical-align:middle;"></span><span style="font-size:12px;font-weight:700;color:#8B95B0;letter-spacing:0.08em;text-transform:uppercase;">Prompt Score</span></td>
+      <td align="right"><span style="font-size:11px;color:#5C6885;font-family:monospace;">Week {{week_number}}, {{year}}</span></td>
+    </tr></table>
+  </td></tr>
+
+  <!-- Title -->
+  <tr><td style="padding:28px 32px 0;">
+    <p style="margin:0 0 5px;font-size:11px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#4FFFB0;">Weekly AI Visibility Report</p>
+    <h1 style="margin:0 0 5px;font-size:24px;font-weight:800;letter-spacing:-0.02em;color:#F0F4FF;">{{brand_name}}</h1>
+    <p style="margin:0;font-size:13px;color:#8B95B0;">{{report_date}} &nbsp;&middot;&nbsp; {{engines_tracked}}</p>
+  </td></tr>
+
+  <!-- Stats row -->
+  <tr><td style="padding:20px 32px;">
+    <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+      <td width="31%" valign="top" style="background:#1A2030;border:1px solid #1E2740;border-radius:10px;padding:14px;">
+        <p style="margin:0 0 4px;font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#5C6885;">Your Mentions</p>
+        <p style="margin:0 0 3px;font-size:26px;font-weight:800;color:#4FFFB0;font-family:monospace;">{{mention_count}}/{{total_prompts}}</p>
+        <p style="margin:0;font-size:12px;color:{{trend_color}};">{{trend_label}}</p>
+      </td>
+      <td width="3%"></td>
+      <td width="31%" valign="top" style="background:#1A2030;border:1px solid #1E2740;border-radius:10px;padding:14px;">
+        <p style="margin:0 0 4px;font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#5C6885;">Top Competitor</p>
+        <p style="margin:0 0 3px;font-size:17px;font-weight:800;color:#FF4D6D;">{{competitor_1_name}}</p>
+        <p style="margin:0;font-size:12px;color:#8B95B0;">{{competitor_1_count}}/{{total_prompts}} prompts</p>
+      </td>
+      <td width="3%"></td>
+      <td width="31%" valign="top" style="background:#1A2030;border:1px solid #1E2740;border-radius:10px;padding:14px;">
+        <p style="margin:0 0 4px;font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#5C6885;">Competitor Gap</p>
+        <p style="margin:0 0 3px;font-size:26px;font-weight:800;color:{{gap_color}};font-family:monospace;">{{competitor_gap_pct}}</p>
+        <p style="margin:0;font-size:12px;color:#8B95B0;">{{gap_direction}}</p>
+      </td>
+    </tr></table>
+  </td></tr>
+
+  <!-- Share of voice -->
+  <tr><td style="padding:0 32px 20px;">
+    <p style="margin:0 0 12px;font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#5C6885;">Share of Voice</p>
+    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:8px;"><tr>
+      <td width="120" style="font-size:13px;font-weight:500;color:#4FFFB0;padding-right:10px;">{{brand_name}}</td>
+      <td style="background:#1A2030;border-radius:4px;height:8px;overflow:hidden;border:1px solid #1E2740;"><div style="background:linear-gradient(90deg,#4FFFB0,#8effca);height:8px;width:{{brand_sov_pct}}%;border-radius:4px;"></div></td>
+      <td width="44" align="right" style="font-size:12px;font-weight:700;color:#4FFFB0;font-family:monospace;padding-left:10px;">{{brand_sov_pct}}%</td>
+    </tr></table>
+    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:8px;"><tr>
+      <td width="120" style="font-size:13px;font-weight:500;color:#F0F4FF;padding-right:10px;">{{competitor_1_name}}</td>
+      <td style="background:#1A2030;border-radius:4px;height:8px;overflow:hidden;border:1px solid #1E2740;"><div style="background:linear-gradient(90deg,#FF4D6D,#ff7891);height:8px;width:{{competitor_1_sov_pct}}%;border-radius:4px;"></div></td>
+      <td width="44" align="right" style="font-size:12px;font-weight:700;color:#FF4D6D;font-family:monospace;padding-left:10px;">{{competitor_1_sov_pct}}%</td>
+    </tr></table>
+    <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+      <td width="120" style="font-size:13px;font-weight:500;color:#F0F4FF;padding-right:10px;">{{competitor_2_name}}</td>
+      <td style="background:#1A2030;border-radius:4px;height:8px;overflow:hidden;border:1px solid #1E2740;"><div style="background:linear-gradient(90deg,#7B61FF,#9d87ff);height:8px;width:{{competitor_2_sov_pct}}%;border-radius:4px;"></div></td>
+      <td width="44" align="right" style="font-size:12px;font-weight:700;color:#7B61FF;font-family:monospace;padding-left:10px;">{{competitor_2_sov_pct}}%</td>
+    </tr></table>
+  </td></tr>
+
+  <!-- Prompt table -->
+  <tr><td style="padding:0 32px 20px;">
+    <p style="margin:0 0 12px;font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#5C6885;">Prompt Breakdown</p>
+    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#1A2030;border:1px solid #1E2740;border-radius:10px;overflow:hidden;">
+      <tr style="background:#10172A;">
+        <td style="padding:9px 14px;font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#5C6885;">Prompt</td>
+        <td width="46" align="center" style="padding:9px 6px;font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#5C6885;">GPT</td>
+        <td width="46" align="center" style="padding:9px 6px;font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#5C6885;">PPLX</td>
+        <td width="46" align="center" style="padding:9px 6px;font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#5C6885;">GEM</td>
+      </tr>
+      {{prompt_rows_html}}
+    </table>
+  </td></tr>
+
+  <!-- Insight -->
+  <tr><td style="padding:0 32px 20px;">
+    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:rgba(255,77,109,0.07);border:1px solid rgba(255,77,109,0.22);border-radius:10px;">
+      <tr><td style="padding:16px 18px;">
+        <p style="margin:0 0 4px;font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#FF4D6D;">This week's signal</p>
+        <p style="margin:0;font-size:14px;color:#F0F4FF;line-height:1.6;">{{insight_text}}</p>
+      </td></tr>
+    </table>
+  </td></tr>
+
+  <!-- Missing prompts -->
+  <tr><td style="padding:0 32px 20px;">
+    <p style="margin:0 0 10px;font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#5C6885;">Prompts You're Missing From</p>
+    {{missing_prompts_html}}
+  </td></tr>
+
+  <!-- Hallucination block (omit if none) -->
+  {{hallucination_block_html}}
+
+  <!-- CTA -->
+  <tr><td style="padding:4px 32px 32px;text-align:center;">
+    <a href="https://tally.so/r/q4Y6xY" style="display:inline-block;background:#4FFFB0;color:#0B0F1A;font-size:14px;font-weight:700;padding:13px 28px;border-radius:10px;text-decoration:none;">Update My Prompts &rarr;</a>
+    <p style="margin:12px 0 0;font-size:12px;color:#5C6885;">Questions? Reply to this email &mdash; we read every one.</p>
+  </td></tr>
+
+  <!-- Footer -->
+  <tr><td style="padding:18px 32px;border-top:1px solid #1E2740;background:#10172A;">
+    <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+      <td style="font-size:12px;color:#5C6885;line-height:1.6;"><strong style="color:#8B95B0;">Prompt Score</strong> &nbsp;&middot;&nbsp; AI Brand Visibility Monitoring<br/>You're on the <strong style="color:#8B95B0;">{{plan_name}}</strong> plan.</td>
+      <td align="right" valign="top"><a href="{{unsubscribe_url}}" style="font-size:12px;color:#5C6885;text-decoration:underline;">Unsubscribe</a></td>
+    </tr></table>
+  </td></tr>
+
+</table>
+</td></tr>
+</table>
+</body>
+</html>
