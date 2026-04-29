@@ -1373,6 +1373,56 @@
   </div>
 </section>
 
+<!-- ============ FREE CHECK ============ -->
+<section id="signup" style="background:linear-gradient(180deg,transparent,rgba(79,255,176,0.03),transparent);">
+  <div class="container">
+    <div class="section-head reveal">
+      <div class="eyebrow" style="justify-content:center;">Free AI Visibility Check</div>
+      <h2>See your score in 60 seconds</h2>
+      <p>Enter your brand name and we'll run 5 buyer-intent prompts through ChatGPT right now — no credit card, no login.</p>
+    </div>
+
+    <div style="max-width:520px;margin:0 auto;">
+      <div id="free-check-form" class="reveal">
+        <div style="background:#141927;border:1px solid #1E2740;border-radius:16px;padding:32px;">
+          <div style="margin-bottom:16px;">
+            <label style="display:block;font-size:12px;font-weight:600;color:#8B95B0;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:8px;">Your brand name</label>
+            <input id="fc-brand" type="text" placeholder="e.g. Acme Corp" autocomplete="organization"
+              style="width:100%;box-sizing:border-box;background:#0B0F1A;border:1px solid #1E2740;border-radius:10px;padding:13px 16px;font-size:15px;color:#F0F4FF;font-family:inherit;outline:none;transition:border-color 0.2s;"
+              onfocus="this.style.borderColor='#4FFFB0'" onblur="this.style.borderColor='#1E2740'" />
+          </div>
+          <div style="margin-bottom:24px;">
+            <label style="display:block;font-size:12px;font-weight:600;color:#8B95B0;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:8px;">Your email</label>
+            <input id="fc-email" type="email" placeholder="you@company.com" autocomplete="email"
+              style="width:100%;box-sizing:border-box;background:#0B0F1A;border:1px solid #1E2740;border-radius:10px;padding:13px 16px;font-size:15px;color:#F0F4FF;font-family:inherit;outline:none;transition:border-color 0.2s;"
+              onfocus="this.style.borderColor='#4FFFB0'" onblur="this.style.borderColor='#1E2740'" />
+          </div>
+          <button id="fc-btn" onclick="runFreeCheck()"
+            style="width:100%;background:#4FFFB0;color:#0B0F1A;border:none;border-radius:10px;padding:14px 24px;font-size:15px;font-weight:700;font-family:inherit;cursor:pointer;transition:background 0.2s;">
+            Check My AI Visibility
+          </button>
+          <p id="fc-error" style="display:none;margin:12px 0 0;font-size:13px;color:#FF4D6D;text-align:center;"></p>
+          <p style="margin:14px 0 0;font-size:12px;color:#5C6885;text-align:center;">We'll email you the result. No spam, ever.</p>
+        </div>
+      </div>
+
+      <!-- Result card (hidden until check runs) -->
+      <div id="free-check-result" style="display:none;" class="reveal">
+        <div style="background:#141927;border:1px solid #1E2740;border-radius:16px;padding:32px;text-align:center;">
+          <p style="margin:0 0 8px;font-size:11px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#4FFFB0;">Your AI Visibility Score</p>
+          <p id="fc-score-display" style="margin:0 0 16px;font-size:56px;font-weight:800;color:#F0F4FF;font-family:'JetBrains Mono',monospace;letter-spacing:-0.03em;">—</p>
+          <p id="fc-score-label" style="margin:0 0 24px;font-size:15px;color:#8B95B0;line-height:1.6;"></p>
+          <a href="https://tally.so/r/q4Y6xY" class="btn btn-primary" style="display:inline-flex;">
+            Get the Full 50-Prompt Report
+            <svg class="arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </a>
+          <p style="margin:14px 0 0;font-size:12px;color:#5C6885;">Full report also sent to your inbox.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
 <!-- ============ FAQ ============ -->
 <section id="faq">
   <div class="container">
@@ -1457,6 +1507,71 @@
     });
   }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
   reveals.forEach(r => io.observe(r));
+
+  // Free visibility check
+  async function runFreeCheck() {
+    const brand = document.getElementById('fc-brand').value.trim();
+    const email = document.getElementById('fc-email').value.trim();
+    const btn   = document.getElementById('fc-btn');
+    const err   = document.getElementById('fc-error');
+
+    err.style.display = 'none';
+    if (!brand || brand.length < 2) { showErr('Enter your brand name.'); return; }
+    if (!email || !email.includes('@')) { showErr('Enter a valid email address.'); return; }
+
+    btn.disabled = true;
+    btn.textContent = 'Running prompts\u2026';
+    btn.style.opacity = '0.7';
+
+    function showErr(msg) {
+      err.textContent = msg;
+      err.style.display = 'block';
+      btn.disabled = false;
+      btn.textContent = 'Check My AI Visibility';
+      btn.style.opacity = '1';
+    }
+
+    try {
+      // N8N_FREE_CHECK_URL is injected at deploy time via Netlify env vars
+      // For local dev, set window.FREE_CHECK_URL before this script runs
+      const url = window.FREE_CHECK_URL || 'https://your-n8n-instance.railway.app/webhook/free-check';
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ brand, email })
+      });
+      const data = await res.json();
+
+      if (!res.ok || !data.ok) {
+        const msg = data.message || '';
+        if (msg === 'ALREADY_USED') showErr('We already ran a free check for this brand + email. Check your inbox!');
+        else if (msg === 'RATE_LIMITED') showErr('Too many requests from this device. Try again tomorrow.');
+        else if (msg === 'ABUSE_BLOCKED') showErr('This account has been flagged. Contact us if you think this is a mistake.');
+        else showErr('Something went wrong. Please try again in a moment.');
+        return;
+      }
+
+      // Show result
+      document.getElementById('free-check-form').style.display = 'none';
+      const resultEl = document.getElementById('free-check-result');
+      resultEl.style.display = 'block';
+      document.getElementById('fc-score-display').textContent = data.score + '/5';
+      const labels = [
+        'AI engines barely know you exist yet. The good news: there\'s a clear path to fix that.',
+        'You\'re showing up in some answers, but missing from most. Competitors may already be ahead.',
+        'You\'re in the conversation. Now let\'s find out who else is — and where you\'re losing ground.',
+        'Strong visibility. Let\'s track it weekly and make sure it stays that way.',
+        'You\'re appearing in every prompt we tested. Time to monitor competitors and protect that lead.'
+      ];
+      document.getElementById('fc-score-label').textContent =
+        'Your brand appeared in ' + data.score + ' of 5 prompts. ' + (labels[data.score] || '') + ' Full report sent to your inbox.';
+      setTimeout(() => resultEl.classList.add('visible'), 50);
+
+    } catch(e) {
+      showErr('Network error. Check your connection and try again.');
+    }
+  }
+  window.runFreeCheck = runFreeCheck;
 
   // Animate share-of-voice bars when in view
   const sovBars = document.querySelectorAll('.sov-bar-fill');
