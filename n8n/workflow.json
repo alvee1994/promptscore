@@ -1,54 +1,138 @@
 {
-  "name": "Prompt Score — Weekly Run",
+  "name": "Prompt Score \u2014 Weekly Run",
   "active": false,
-  "settings": { "executionOrder": "v1" },
+  "settings": {
+    "executionOrder": "v1"
+  },
   "nodes": [
     {
-      "id": "cron", "name": "Every Monday 07:00",
-      "type": "n8n-nodes-base.scheduleTrigger", "typeVersion": 1.1, "position": [240, 300],
-      "parameters": { "rule": { "interval": [{ "field": "cronExpression", "expression": "0 7 * * 1" }] } }
+      "id": "cron",
+      "name": "Every Monday 07:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        240,
+        300
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 7 * * 1"
+            }
+          ]
+        }
+      }
     },
     {
-      "id": "get-clients", "name": "Get Active Clients",
-      "type": "n8n-nodes-base.airtable", "typeVersion": 2, "position": [460, 300],
-      "credentials": { "airtableTokenApi": { "id": "airtable-cred", "name": "Airtable" } },
+      "id": "get-clients",
+      "name": "Get Active Clients",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2,
+      "position": [
+        460,
+        300
+      ],
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "airtable-cred",
+          "name": "Airtable"
+        }
+      },
       "parameters": {
         "operation": "list",
-        "base": { "__rl": true, "value": "={{ $env.AIRTABLE_BASE_ID }}", "mode": "id" },
-        "table": { "__rl": true, "value": "Clients", "mode": "name" },
+        "base": {
+          "__rl": true,
+          "value": "={{ $env.AIRTABLE_BASE_ID }}",
+          "mode": "id"
+        },
+        "table": {
+          "__rl": true,
+          "value": "Clients",
+          "mode": "name"
+        },
         "filterByFormula": "OR({status}='active',{status}='trialing')",
         "options": {}
       }
     },
     {
-      "id": "split-clients", "name": "Loop Clients",
-      "type": "n8n-nodes-base.splitInBatches", "typeVersion": 3, "position": [680, 300],
-      "parameters": { "batchSize": 1, "options": {} }
+      "id": "split-clients",
+      "name": "Loop Clients",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        680,
+        300
+      ],
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      }
     },
     {
-      "id": "get-prompts", "name": "Get Client Prompts",
-      "type": "n8n-nodes-base.airtable", "typeVersion": 2, "position": [900, 300],
-      "credentials": { "airtableTokenApi": { "id": "airtable-cred", "name": "Airtable" } },
+      "id": "get-prompts",
+      "name": "Get Client Prompts",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2,
+      "position": [
+        900,
+        300
+      ],
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "airtable-cred",
+          "name": "Airtable"
+        }
+      },
       "parameters": {
         "operation": "list",
-        "base": { "__rl": true, "value": "={{ $env.AIRTABLE_BASE_ID }}", "mode": "id" },
-        "table": { "__rl": true, "value": "Prompts", "mode": "name" },
+        "base": {
+          "__rl": true,
+          "value": "={{ $env.AIRTABLE_BASE_ID }}",
+          "mode": "id"
+        },
+        "table": {
+          "__rl": true,
+          "value": "Prompts",
+          "mode": "name"
+        },
         "filterByFormula": "AND({active}=1,FIND('{{ $json.id }}',ARRAYJOIN({client})))",
         "options": {}
       }
     },
     {
-      "id": "split-prompts", "name": "Loop Prompts",
-      "type": "n8n-nodes-base.splitInBatches", "typeVersion": 3, "position": [1120, 300],
-      "parameters": { "batchSize": 1, "options": {} }
+      "id": "split-prompts",
+      "name": "Loop Prompts",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        1120,
+        300
+      ],
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      }
     },
     {
-      "id": "run-gpt", "name": "Run — ChatGPT",
-      "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [1340, 180],
-      "credentials": { "httpHeaderAuth": { "id": "openai-header", "name": "OpenAI" } },
+      "id": "run-gpt",
+      "name": "Run \u2014 ChatGPT",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1340,
+        180
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "openai-header",
+          "name": "OpenRouter"
+        }
+      },
       "parameters": {
         "method": "POST",
-        "url": "https://api.openai.com/v1/chat/completions",
+        "url": "https://openrouter.ai/api/v1/chat/completions",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
@@ -58,12 +142,23 @@
       }
     },
     {
-      "id": "run-pplx", "name": "Run — Perplexity",
-      "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [1340, 420],
-      "credentials": { "httpHeaderAuth": { "id": "perplexity-header", "name": "Perplexity" } },
+      "id": "run-pplx",
+      "name": "Run \u2014 Perplexity",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1340,
+        420
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "perplexity-header",
+          "name": "OpenRouter"
+        }
+      },
       "parameters": {
         "method": "POST",
-        "url": "https://api.perplexity.ai/chat/completions",
+        "url": "https://openrouter.ai/api/v1/chat/completions",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
@@ -73,61 +168,138 @@
       }
     },
     {
-      "id": "parse", "name": "Parse Mentions",
-      "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [1560, 300],
+      "id": "parse",
+      "name": "Parse Mentions",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1560,
+        300
+      ],
       "parameters": {
-        "jsCode": "const client = $('Loop Clients').item.json.fields;\nconst prompt = $('Loop Prompts').item.json;\nconst gptRaw = $('Run — ChatGPT').item.json.choices[0].message.content;\nconst pplxRaw = $('Run — Perplexity').item.json.choices[0].message.content;\nconst brand = client.name;\nconst comp1 = client.competitor_1 || '';\nconst comp2 = client.competitor_2 || '';\n\nasync function parse(raw) {\n  const sys = `You are an AI response analyst. Return ONLY valid JSON with keys: brand_mentioned (bool), sentiment (positive|neutral|negative), hallucination_flag (bool), competitor_1_mentioned (bool), competitor_2_mentioned (bool). Brand: \"${brand}\". Comp1: \"${comp1}\". Comp2: \"${comp2}\".`;\n  const res = await helpers.httpRequest({\n    method: 'POST',\n    url: 'https://api.openai.com/v1/chat/completions',\n    headers: { 'Authorization': 'Bearer ' + $env.OPENAI_API_KEY, 'Content-Type': 'application/json' },\n    body: JSON.stringify({ model: 'gpt-4o-mini', temperature: 0, messages: [{ role: 'system', content: sys }, { role: 'user', content: 'Raw AI response:\\n' + raw }] })\n  });\n  try {\n    let t = res.choices[0].message.content.trim().replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '');\n    return JSON.parse(t);\n  } catch(e) {\n    return { brand_mentioned: raw.toLowerCase().includes(brand.toLowerCase()), sentiment: 'neutral', hallucination_flag: false, competitor_1_mentioned: false, competitor_2_mentioned: false };\n  }\n}\n\nconst [gpt, pplx] = await Promise.all([parse(gptRaw), parse(pplxRaw)]);\nconst d = new Date();\nd.setDate(d.getDate() - d.getDay() + 1);\nconst weekOf = d.toISOString().split('T')[0];\n\nreturn [{ json: { client_id: $('Loop Clients').item.json.id, prompt_id: prompt.id, client_name: brand, client_email: client.email, plan: client.plan, competitor_1: comp1, competitor_2: comp2, prompt_text: prompt.fields.text, week_of: weekOf, gpt, pplx, gpt_raw: gptRaw, pplx_raw: pplxRaw } }];"
+        "jsCode": "const client = $('Loop Clients').item.json.fields;\nconst prompt = $('Loop Prompts').item.json;\nconst gptRaw = $('Run \u2014 ChatGPT').item.json.choices[0].message.content;\nconst pplxRaw = $('Run \u2014 Perplexity').item.json.choices[0].message.content;\nconst brand = client.name;\nconst comp1 = client.competitor_1 || '';\nconst comp2 = client.competitor_2 || '';\n\nasync function parse(raw) {\n  const sys = `You are an AI response analyst. Return ONLY valid JSON with keys: brand_mentioned (bool), sentiment (positive|neutral|negative), hallucination_flag (bool), competitor_1_mentioned (bool), competitor_2_mentioned (bool). Brand: \"${brand}\". Comp1: \"${comp1}\". Comp2: \"${comp2}\".`;\n  const res = await helpers.httpRequest({\n    method: 'POST',\n    url: 'https://openrouter.ai/api/v1/chat/completions',\n    headers: { 'Authorization': 'Bearer ' + $env.OPENROUTER_API_KEY, 'Content-Type': 'application/json' },\n    body: JSON.stringify({ model: 'gpt-4o-mini', temperature: 0, messages: [{ role: 'system', content: sys }, { role: 'user', content: 'Raw AI response:\\n' + raw }] })\n  });\n  try {\n    let t = res.choices[0].message.content.trim().replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '');\n    return JSON.parse(t);\n  } catch(e) {\n    return { brand_mentioned: raw.toLowerCase().includes(brand.toLowerCase()), sentiment: 'neutral', hallucination_flag: false, competitor_1_mentioned: false, competitor_2_mentioned: false };\n  }\n}\n\nconst [gpt, pplx] = await Promise.all([parse(gptRaw), parse(pplxRaw)]);\nconst d = new Date();\nd.setDate(d.getDate() - d.getDay() + 1);\nconst weekOf = d.toISOString().split('T')[0];\n\nreturn [{ json: { client_id: $('Loop Clients').item.json.id, prompt_id: prompt.id, client_name: brand, client_email: client.email, plan: client.plan, competitor_1: comp1, competitor_2: comp2, prompt_text: prompt.fields.text, week_of: weekOf, gpt, pplx, gpt_raw: gptRaw, pplx_raw: pplxRaw } }];"
       }
     },
     {
-      "id": "write-gpt", "name": "Write Result — ChatGPT",
-      "type": "n8n-nodes-base.airtable", "typeVersion": 2, "position": [1780, 180],
-      "credentials": { "airtableTokenApi": { "id": "airtable-cred", "name": "Airtable" } },
-      "parameters": {
-        "operation": "create",
-        "base": { "__rl": true, "value": "={{ $env.AIRTABLE_BASE_ID }}", "mode": "id" },
-        "table": { "__rl": true, "value": "Results", "mode": "name" },
-        "columns": { "mappingMode": "defineBelow", "value": {
-          "client": "={{ [$json.client_id] }}", "prompt": "={{ [$json.prompt_id] }}",
-          "week_of": "={{ $json.week_of }}", "engine": "chatgpt",
-          "brand_mentioned": "={{ $json.gpt.brand_mentioned }}", "brand_sentiment": "={{ $json.gpt.sentiment }}",
-          "hallucination_flag": "={{ $json.gpt.hallucination_flag }}",
-          "competitor_1_mentioned": "={{ $json.gpt.competitor_1_mentioned }}",
-          "competitor_2_mentioned": "={{ $json.gpt.competitor_2_mentioned }}",
-          "raw_response": "={{ $json.gpt_raw }}", "run_at": "={{ new Date().toISOString() }}"
-        }}, "options": {}
-      }
-    },
-    {
-      "id": "write-pplx", "name": "Write Result — Perplexity",
-      "type": "n8n-nodes-base.airtable", "typeVersion": 2, "position": [1780, 420],
-      "credentials": { "airtableTokenApi": { "id": "airtable-cred", "name": "Airtable" } },
+      "id": "write-gpt",
+      "name": "Write Result \u2014 ChatGPT",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2,
+      "position": [
+        1780,
+        180
+      ],
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "airtable-cred",
+          "name": "Airtable"
+        }
+      },
       "parameters": {
         "operation": "create",
-        "base": { "__rl": true, "value": "={{ $env.AIRTABLE_BASE_ID }}", "mode": "id" },
-        "table": { "__rl": true, "value": "Results", "mode": "name" },
-        "columns": { "mappingMode": "defineBelow", "value": {
-          "client": "={{ [$('Parse Mentions').item.json.client_id] }}", "prompt": "={{ [$('Parse Mentions').item.json.prompt_id] }}",
-          "week_of": "={{ $('Parse Mentions').item.json.week_of }}", "engine": "perplexity",
-          "brand_mentioned": "={{ $('Parse Mentions').item.json.pplx.brand_mentioned }}", "brand_sentiment": "={{ $('Parse Mentions').item.json.pplx.sentiment }}",
-          "hallucination_flag": "={{ $('Parse Mentions').item.json.pplx.hallucination_flag }}",
-          "competitor_1_mentioned": "={{ $('Parse Mentions').item.json.pplx.competitor_1_mentioned }}",
-          "competitor_2_mentioned": "={{ $('Parse Mentions').item.json.pplx.competitor_2_mentioned }}",
-          "raw_response": "={{ $('Parse Mentions').item.json.pplx_raw }}", "run_at": "={{ new Date().toISOString() }}"
-        }}, "options": {}
+        "base": {
+          "__rl": true,
+          "value": "={{ $env.AIRTABLE_BASE_ID }}",
+          "mode": "id"
+        },
+        "table": {
+          "__rl": true,
+          "value": "Results",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "client": "={{ [$json.client_id] }}",
+            "prompt": "={{ [$json.prompt_id] }}",
+            "week_of": "={{ $json.week_of }}",
+            "engine": "chatgpt",
+            "brand_mentioned": "={{ $json.gpt.brand_mentioned }}",
+            "brand_sentiment": "={{ $json.gpt.sentiment }}",
+            "hallucination_flag": "={{ $json.gpt.hallucination_flag }}",
+            "competitor_1_mentioned": "={{ $json.gpt.competitor_1_mentioned }}",
+            "competitor_2_mentioned": "={{ $json.gpt.competitor_2_mentioned }}",
+            "raw_response": "={{ $json.gpt_raw }}",
+            "run_at": "={{ new Date().toISOString() }}"
+          }
+        },
+        "options": {}
       }
     },
     {
-      "id": "build-email", "name": "Build Email",
-      "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [2000, 300],
+      "id": "write-pplx",
+      "name": "Write Result \u2014 Perplexity",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2,
+      "position": [
+        1780,
+        420
+      ],
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "airtable-cred",
+          "name": "Airtable"
+        }
+      },
       "parameters": {
-        "jsCode": "const allResults = $input.all().map(r => r.json.fields || r.json);\nconst meta = $('Parse Mentions').item.json;\nconst client = $('Loop Clients').item.json.fields;\n\nconst gptRows = allResults.filter(r => r.engine === 'chatgpt');\nconst pplxRows = allResults.filter(r => r.engine === 'perplexity');\nconst totalRuns = (gptRows.length + pplxRows.length) || 1;\n\nconst brandMentions = gptRows.filter(r=>r.brand_mentioned).length + pplxRows.filter(r=>r.brand_mentioned).length;\nconst brandSov = Math.round(brandMentions / totalRuns * 100);\nconst comp1Mentions = gptRows.filter(r=>r.competitor_1_mentioned).length + pplxRows.filter(r=>r.competitor_1_mentioned).length;\nconst comp1Sov = Math.round(comp1Mentions / totalRuns * 100);\nconst gap = comp1Sov - brandSov;\n\nconst mark = v => v ? \"<span style='color:#4FFFB0'>&#10003;</span>\" : \"<span style='color:#FF4D6D'>&#10007;</span>\";\n\nconst promptMap = {};\nallResults.forEach(r => {\n  const k = (r.prompt && r.prompt[0]) || r.prompt_id || '?';\n  if (!promptMap[k]) promptMap[k] = { text: r.prompt_text || k, gpt: null, pplx: null };\n  if (r.engine === 'chatgpt') promptMap[k].gpt = r.brand_mentioned;\n  if (r.engine === 'perplexity') promptMap[k].pplx = r.brand_mentioned;\n});\n\nconst promptRowsHtml = Object.values(promptMap).map(p =>\n  `<tr style=\"border-top:1px solid #1E2740\"><td style=\"padding:10px 14px;font-size:13px;color:#F0F4FF\">${p.text}</td><td align=\"center\" style=\"padding:10px 6px;font-size:14px\">${mark(p.gpt)}</td><td align=\"center\" style=\"padding:10px 6px;font-size:14px\">${mark(p.pplx)}</td><td align=\"center\" style=\"padding:10px 6px;font-size:13px;color:#5C6885\">&mdash;</td></tr>`\n).join('');\n\nconst missing = Object.values(promptMap).filter(p => p.gpt === false && p.pplx === false);\nconst missingHtml = missing.map(p => `<p style=\"margin:0 0 6px;font-size:13px;color:#8B95B0;padding:9px 14px;background:#1A2030;border-radius:7px;border-left:3px solid #FF4D6D\">\"${p.text}\"</p>`).join('');\n\nconst hallucinations = allResults.filter(r => r.hallucination_flag);\nconst hallucinationBlockHtml = hallucinations.length ? `<tr><td style=\"padding:0 32px 20px\"><table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"background:rgba(255,184,77,0.07);border:1px solid rgba(255,184,77,0.22);border-radius:10px\"><tr><td style=\"padding:16px 18px\"><p style=\"margin:0 0 4px;font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#FFB84D\">&#9888; Hallucination Flags</p><p style=\"margin:0 0 10px;font-size:13px;color:#8B95B0\">Your brand was mentioned but the description may be inaccurate:</p>${hallucinations.map(r=>`<p style=\"margin:0 0 6px;font-size:13px;color:#F0F4FF\">&middot; ${r.prompt_text||'?'} (${r.engine})</p>`).join('')}</td></tr></table></td></tr>` : '';\n\nconst insightText = gap > 0\n  ? `${client.competitor_1 || 'Your top competitor'} appeared in ${comp1Mentions} of ${totalRuns} prompt runs — ${gap} points ahead. Focus on the ${missing.length} prompts where you're missing from both engines.`\n  : `You appeared in ${brandMentions} of ${totalRuns} prompt runs. ${gap === 0 ? 'Neck and neck with ' + (client.competitor_1||'your competitor') + '.' : 'You are ahead of ' + (client.competitor_1||'your competitor') + ' by ' + Math.abs(gap) + ' points.'}`;\n\nconst d = new Date(meta.week_of);\nconst weekNum = Math.ceil((d - new Date(d.getFullYear(),0,1)) / 604800000);\nconst planFormMap = { starter: 'Np4kKB', pro: 'q4Y6xY', agency: 'QKxLg8' };\nconst formId = planFormMap[client.plan] || 'q4Y6xY';\n\nconst template = require('fs').readFileSync('/home/lv/codeStuff/promptpeek/templates/report_email.html', 'utf8');\nconst emailHtml = template\n  .replace(/{{brand_name}}/g, client.name)\n  .replace(/{{mention_count}}/g, brandMentions)\n  .replace(/{{total_prompts}}/g, totalRuns)\n  .replace(/{{week_number}}/g, weekNum)\n  .replace(/{{year}}/g, d.getFullYear())\n  .replace(/{{report_date}}/g, d.toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'}))\n  .replace(/{{engines_tracked}}/g, 'ChatGPT · Perplexity')\n  .replace(/{{trend_color}}/g, '#8B95B0')\n  .replace(/{{trend_label}}/g, 'first tracked week')\n  .replace(/{{competitor_1_name}}/g, client.competitor_1 || '—')\n  .replace(/{{competitor_1_count}}/g, comp1Mentions)\n  .replace(/{{competitor_gap_pct}}/g, (gap>0?'+':'')+gap+'%')\n  .replace(/{{competitor_gap_label}}/g, gap>0?(client.competitor_1||'competitor')+' is '+gap+'pts ahead':'you are ahead')\n  .replace(/{{gap_color}}/g, gap>0?'#FF4D6D':'#4FFFB0')\n  .replace(/{{gap_direction}}/g, gap>0?'competitor is ahead':'you are ahead')\n  .replace(/{{brand_sov_pct}}/g, brandSov)\n  .replace(/{{competitor_1_sov_pct}}/g, comp1Sov)\n  .replace(/{{competitor_2_name}}/g, client.competitor_2 || '')\n  .replace(/{{competitor_2_sov_pct}}/g, 0)\n  .replace(/{{prompt_rows_html}}/g, promptRowsHtml)\n  .replace(/{{missing_prompts_html}}/g, missingHtml)\n  .replace(/{{hallucination_block_html}}/g, hallucinationBlockHtml)\n  .replace(/{{insight_text}}/g, insightText)\n  .replace(/{{plan_name}}/g, client.plan || 'Starter')\n  .replace(/{{unsubscribe_url}}/g, 'https://promptscore.io/unsubscribe?email=' + encodeURIComponent(client.email));\n\nreturn [{ json: { to: client.email, subject: `Prompt Score: ${client.name} appeared in ${brandMentions}/${totalRuns} AI prompts this week`, email_html: emailHtml } }];"
+        "operation": "create",
+        "base": {
+          "__rl": true,
+          "value": "={{ $env.AIRTABLE_BASE_ID }}",
+          "mode": "id"
+        },
+        "table": {
+          "__rl": true,
+          "value": "Results",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "client": "={{ [$('Parse Mentions').item.json.client_id] }}",
+            "prompt": "={{ [$('Parse Mentions').item.json.prompt_id] }}",
+            "week_of": "={{ $('Parse Mentions').item.json.week_of }}",
+            "engine": "perplexity",
+            "brand_mentioned": "={{ $('Parse Mentions').item.json.pplx.brand_mentioned }}",
+            "brand_sentiment": "={{ $('Parse Mentions').item.json.pplx.sentiment }}",
+            "hallucination_flag": "={{ $('Parse Mentions').item.json.pplx.hallucination_flag }}",
+            "competitor_1_mentioned": "={{ $('Parse Mentions').item.json.pplx.competitor_1_mentioned }}",
+            "competitor_2_mentioned": "={{ $('Parse Mentions').item.json.pplx.competitor_2_mentioned }}",
+            "raw_response": "={{ $('Parse Mentions').item.json.pplx_raw }}",
+            "run_at": "={{ new Date().toISOString() }}"
+          }
+        },
+        "options": {}
       }
     },
     {
-      "id": "send-email", "name": "Send Email — Resend",
-      "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [2220, 300],
-      "credentials": { "httpHeaderAuth": { "id": "resend-header", "name": "Resend" } },
+      "id": "build-email",
+      "name": "Build Email",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2000,
+        300
+      ],
+      "parameters": {
+        "jsCode": "const allResults = $input.all().map(r => r.json.fields || r.json);\nconst meta = $('Parse Mentions').item.json;\nconst client = $('Loop Clients').item.json.fields;\n\nconst gptRows = allResults.filter(r => r.engine === 'chatgpt');\nconst pplxRows = allResults.filter(r => r.engine === 'perplexity');\nconst totalRuns = (gptRows.length + pplxRows.length) || 1;\n\nconst brandMentions = gptRows.filter(r=>r.brand_mentioned).length + pplxRows.filter(r=>r.brand_mentioned).length;\nconst brandSov = Math.round(brandMentions / totalRuns * 100);\nconst comp1Mentions = gptRows.filter(r=>r.competitor_1_mentioned).length + pplxRows.filter(r=>r.competitor_1_mentioned).length;\nconst comp1Sov = Math.round(comp1Mentions / totalRuns * 100);\nconst gap = comp1Sov - brandSov;\n\nconst mark = v => v ? \"<span style='color:#4FFFB0'>&#10003;</span>\" : \"<span style='color:#FF4D6D'>&#10007;</span>\";\n\nconst promptMap = {};\nallResults.forEach(r => {\n  const k = (r.prompt && r.prompt[0]) || r.prompt_id || '?';\n  if (!promptMap[k]) promptMap[k] = { text: r.prompt_text || k, gpt: null, pplx: null };\n  if (r.engine === 'chatgpt') promptMap[k].gpt = r.brand_mentioned;\n  if (r.engine === 'perplexity') promptMap[k].pplx = r.brand_mentioned;\n});\n\nconst promptRowsHtml = Object.values(promptMap).map(p =>\n  `<tr style=\"border-top:1px solid #1E2740\"><td style=\"padding:10px 14px;font-size:13px;color:#F0F4FF\">${p.text}</td><td align=\"center\" style=\"padding:10px 6px;font-size:14px\">${mark(p.gpt)}</td><td align=\"center\" style=\"padding:10px 6px;font-size:14px\">${mark(p.pplx)}</td><td align=\"center\" style=\"padding:10px 6px;font-size:13px;color:#5C6885\">&mdash;</td></tr>`\n).join('');\n\nconst missing = Object.values(promptMap).filter(p => p.gpt === false && p.pplx === false);\nconst missingHtml = missing.map(p => `<p style=\"margin:0 0 6px;font-size:13px;color:#8B95B0;padding:9px 14px;background:#1A2030;border-radius:7px;border-left:3px solid #FF4D6D\">\"${p.text}\"</p>`).join('');\n\nconst hallucinations = allResults.filter(r => r.hallucination_flag);\nconst hallucinationBlockHtml = hallucinations.length ? `<tr><td style=\"padding:0 32px 20px\"><table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"background:rgba(255,184,77,0.07);border:1px solid rgba(255,184,77,0.22);border-radius:10px\"><tr><td style=\"padding:16px 18px\"><p style=\"margin:0 0 4px;font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#FFB84D\">&#9888; Hallucination Flags</p><p style=\"margin:0 0 10px;font-size:13px;color:#8B95B0\">Your brand was mentioned but the description may be inaccurate:</p>${hallucinations.map(r=>`<p style=\"margin:0 0 6px;font-size:13px;color:#F0F4FF\">&middot; ${r.prompt_text||'?'} (${r.engine})</p>`).join('')}</td></tr></table></td></tr>` : '';\n\nconst insightText = gap > 0\n  ? `${client.competitor_1 || 'Your top competitor'} appeared in ${comp1Mentions} of ${totalRuns} prompt runs \u2014 ${gap} points ahead. Focus on the ${missing.length} prompts where you're missing from both engines.`\n  : `You appeared in ${brandMentions} of ${totalRuns} prompt runs. ${gap === 0 ? 'Neck and neck with ' + (client.competitor_1||'your competitor') + '.' : 'You are ahead of ' + (client.competitor_1||'your competitor') + ' by ' + Math.abs(gap) + ' points.'}`;\n\nconst d = new Date(meta.week_of);\nconst weekNum = Math.ceil((d - new Date(d.getFullYear(),0,1)) / 604800000);\nconst planFormMap = { starter: 'Np4kKB', pro: 'q4Y6xY', agency: 'QKxLg8' };\nconst formId = planFormMap[client.plan] || 'q4Y6xY';\n\nconst template = require('fs').readFileSync('/home/lv/codeStuff/promptpeek/templates/report_email.html', 'utf8');\nconst emailHtml = template\n  .replace(/{{brand_name}}/g, client.name)\n  .replace(/{{mention_count}}/g, brandMentions)\n  .replace(/{{total_prompts}}/g, totalRuns)\n  .replace(/{{week_number}}/g, weekNum)\n  .replace(/{{year}}/g, d.getFullYear())\n  .replace(/{{report_date}}/g, d.toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'}))\n  .replace(/{{engines_tracked}}/g, 'ChatGPT \u00b7 Perplexity')\n  .replace(/{{trend_color}}/g, '#8B95B0')\n  .replace(/{{trend_label}}/g, 'first tracked week')\n  .replace(/{{competitor_1_name}}/g, client.competitor_1 || '\u2014')\n  .replace(/{{competitor_1_count}}/g, comp1Mentions)\n  .replace(/{{competitor_gap_pct}}/g, (gap>0?'+':'')+gap+'%')\n  .replace(/{{competitor_gap_label}}/g, gap>0?(client.competitor_1||'competitor')+' is '+gap+'pts ahead':'you are ahead')\n  .replace(/{{gap_color}}/g, gap>0?'#FF4D6D':'#4FFFB0')\n  .replace(/{{gap_direction}}/g, gap>0?'competitor is ahead':'you are ahead')\n  .replace(/{{brand_sov_pct}}/g, brandSov)\n  .replace(/{{competitor_1_sov_pct}}/g, comp1Sov)\n  .replace(/{{competitor_2_name}}/g, client.competitor_2 || '')\n  .replace(/{{competitor_2_sov_pct}}/g, 0)\n  .replace(/{{prompt_rows_html}}/g, promptRowsHtml)\n  .replace(/{{missing_prompts_html}}/g, missingHtml)\n  .replace(/{{hallucination_block_html}}/g, hallucinationBlockHtml)\n  .replace(/{{insight_text}}/g, insightText)\n  .replace(/{{plan_name}}/g, client.plan || 'Starter')\n  .replace(/{{unsubscribe_url}}/g, 'https://promptscore.io/unsubscribe?email=' + encodeURIComponent(client.email));\n\nreturn [{ json: { to: client.email, subject: `Prompt Score: ${client.name} appeared in ${brandMentions}/${totalRuns} AI prompts this week`, email_html: emailHtml } }];"
+      }
+    },
+    {
+      "id": "send-email",
+      "name": "Send Email \u2014 Resend",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2220,
+        300
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "resend-header",
+          "name": "Resend"
+        }
+      },
       "parameters": {
         "method": "POST",
         "url": "https://api.resend.com/emails",
@@ -141,16 +313,136 @@
     }
   ],
   "connections": {
-    "Every Monday 07:00": { "main": [[{ "node": "Get Active Clients", "type": "main", "index": 0 }]] },
-    "Get Active Clients":  { "main": [[{ "node": "Loop Clients", "type": "main", "index": 0 }]] },
-    "Loop Clients":        { "main": [[{ "node": "Get Client Prompts", "type": "main", "index": 0 }]] },
-    "Get Client Prompts":  { "main": [[{ "node": "Loop Prompts", "type": "main", "index": 0 }]] },
-    "Loop Prompts":        { "main": [[{ "node": "Run — ChatGPT", "type": "main", "index": 0 }, { "node": "Run — Perplexity", "type": "main", "index": 0 }]] },
-    "Run — ChatGPT":       { "main": [[{ "node": "Parse Mentions", "type": "main", "index": 0 }]] },
-    "Run — Perplexity":    { "main": [[{ "node": "Parse Mentions", "type": "main", "index": 1 }]] },
-    "Parse Mentions":      { "main": [[{ "node": "Write Result — ChatGPT", "type": "main", "index": 0 }, { "node": "Write Result — Perplexity", "type": "main", "index": 0 }]] },
-    "Write Result — ChatGPT":    { "main": [[{ "node": "Build Email", "type": "main", "index": 0 }]] },
-    "Write Result — Perplexity": { "main": [[{ "node": "Build Email", "type": "main", "index": 0 }]] },
-    "Build Email":         { "main": [[{ "node": "Send Email — Resend", "type": "main", "index": 0 }]] }
+    "Every Monday 07:00": {
+      "main": [
+        [
+          {
+            "node": "Get Active Clients",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Active Clients": {
+      "main": [
+        [
+          {
+            "node": "Loop Clients",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Clients": {
+      "main": [
+        [
+          {
+            "node": "Get Client Prompts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Client Prompts": {
+      "main": [
+        [
+          {
+            "node": "Loop Prompts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Prompts": {
+      "main": [
+        [
+          {
+            "node": "Run \u2014 ChatGPT",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Run \u2014 Perplexity",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run \u2014 ChatGPT": {
+      "main": [
+        [
+          {
+            "node": "Parse Mentions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run \u2014 Perplexity": {
+      "main": [
+        [
+          {
+            "node": "Parse Mentions",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Parse Mentions": {
+      "main": [
+        [
+          {
+            "node": "Write Result \u2014 ChatGPT",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Write Result \u2014 Perplexity",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write Result \u2014 ChatGPT": {
+      "main": [
+        [
+          {
+            "node": "Build Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write Result \u2014 Perplexity": {
+      "main": [
+        [
+          {
+            "node": "Build Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Email": {
+      "main": [
+        [
+          {
+            "node": "Send Email \u2014 Resend",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
   }
 }

@@ -1,74 +1,162 @@
 {
-  "name": "Prompt Score — Free Visibility Check",
+  "name": "Prompt Score \u2014 Free Visibility Check",
   "active": false,
-  "settings": { "executionOrder": "v1" },
+  "settings": {
+    "executionOrder": "v1"
+  },
   "nodes": [
     {
-      "id": "webhook", "name": "Free Check Webhook",
-      "type": "n8n-nodes-base.webhook", "typeVersion": 2, "position": [240, 300],
+      "id": "webhook",
+      "name": "Free Check Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        240,
+        300
+      ],
       "parameters": {
         "httpMethod": "POST",
         "path": "free-check",
         "responseMode": "responseNode",
-        "options": { "allowedOrigins": "*" }
+        "options": {
+          "allowedOrigins": "*"
+        }
       }
     },
     {
-      "id": "validate", "name": "Validate + Anti-Abuse",
-      "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [460, 300],
+      "id": "validate",
+      "name": "Validate + Anti-Abuse",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        460,
+        300
+      ],
       "parameters": {
         "jsCode": "const body = $input.item.json.body || $input.item.json;\nconst brand = (body.brand || '').trim();\nconst email = (body.email || '').trim().toLowerCase();\nconst ip    = $input.item.json.headers?.['x-forwarded-for']?.split(',')[0]?.trim() || 'unknown';\n\n// Basic validation\nif (!brand || brand.length < 2) throw new Error('Brand name too short');\nif (!email || !email.includes('@') || !email.includes('.')) throw new Error('Invalid email');\n\n// Disposable email domain blocklist (extend as needed)\nconst blocked = ['mailinator.com','guerrillamail.com','tempmail.com','throwaway.email','yopmail.com','sharklasers.com','trashmail.com','maildrop.cc'];\nconst domain = email.split('@')[1];\nif (blocked.includes(domain)) throw new Error('Disposable email not allowed');\n\nconst crypto = require('crypto');\nconst ipHash = crypto.createHash('sha256').update(ip).digest('hex').slice(0, 16);\n\nreturn [{ json: { brand, email, ip_hash: ipHash, domain } }];"
       }
     },
     {
-      "id": "check-abuse", "name": "Check Abuse in Airtable",
-      "type": "n8n-nodes-base.airtable", "typeVersion": 2, "position": [680, 300],
-      "credentials": { "airtableTokenApi": { "id": "airtable-cred", "name": "Airtable" } },
+      "id": "check-abuse",
+      "name": "Check Abuse in Airtable",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2,
+      "position": [
+        680,
+        300
+      ],
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "airtable-cred",
+          "name": "Airtable"
+        }
+      },
       "parameters": {
         "operation": "list",
-        "base": { "__rl": true, "value": "={{ $env.AIRTABLE_BASE_ID }}", "mode": "id" },
-        "table": { "__rl": true, "value": "Clients", "mode": "name" },
+        "base": {
+          "__rl": true,
+          "value": "={{ $env.AIRTABLE_BASE_ID }}",
+          "mode": "id"
+        },
+        "table": {
+          "__rl": true,
+          "value": "Clients",
+          "mode": "name"
+        },
         "filterByFormula": "OR(AND({email}='{{ $json.email }}',LOWER({name})=LOWER('{{ $json.brand }}')),{free_check_blocked}=1)",
-        "options": { "fields": ["id", "free_check_count", "free_check_blocked", "free_check_hashes"] }
+        "options": {
+          "fields": [
+            "id",
+            "free_check_count",
+            "free_check_blocked",
+            "free_check_hashes"
+          ]
+        }
       }
     },
     {
-      "id": "abuse-gate", "name": "Abuse Gate",
-      "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [900, 300],
+      "id": "abuse-gate",
+      "name": "Abuse Gate",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        900,
+        300
+      ],
       "parameters": {
         "jsCode": "const existing = $('Check Abuse in Airtable').all();\nconst { brand, email, ip_hash } = $('Validate + Anti-Abuse').item.json;\n\nfor (const rec of existing) {\n  const f = rec.json.fields || rec.json;\n  if (f.free_check_blocked) throw new Error('ABUSE_BLOCKED');\n  // Same brand+email combo already used\n  if (f.email === email) throw new Error('ALREADY_USED');\n  // IP rate limit: check if ip_hash appears in recent hashes\n  try {\n    const hashes = JSON.parse(f.free_check_hashes || '[]');\n    if (hashes.filter(h => h === ip_hash).length >= 3) throw new Error('RATE_LIMITED');\n  } catch(e) { if (e.message === 'RATE_LIMITED') throw e; }\n}\n\nreturn [{ json: { brand, email, ip_hash, existing_id: existing[0]?.json?.id || null } }];"
       }
     },
     {
-      "id": "run-prompts", "name": "Run 5 Default Prompts",
-      "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [1120, 300],
+      "id": "run-prompts",
+      "name": "Run 5 Default Prompts",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        300
+      ],
       "parameters": {
-        "jsCode": "const { brand, email, ip_hash } = $json;\n\n// 5 generic buyer-intent prompt templates\nconst templates = [\n  `What are the best tools for companies like ${brand}?`,\n  `Who are the top vendors in the same category as ${brand}?`,\n  `What do people recommend instead of or alongside ${brand}?`,\n  `Is ${brand} a good choice for B2B companies?`,\n  `What are the main alternatives to ${brand}?`\n];\n\nconst results = [];\nfor (const prompt of templates) {\n  const res = await helpers.httpRequest({\n    method: 'POST',\n    url: 'https://api.openai.com/v1/chat/completions',\n    headers: { 'Authorization': 'Bearer ' + $env.OPENAI_API_KEY, 'Content-Type': 'application/json' },\n    body: JSON.stringify({\n      model: 'gpt-4o-mini',\n      temperature: 0.3,\n      messages: [\n        { role: 'system', content: 'You are a helpful assistant. Answer the user question directly and thoroughly.' },\n        { role: 'user', content: prompt }\n      ]\n    })\n  });\n  const text = res.choices[0].message.content;\n  const mentioned = text.toLowerCase().includes(brand.toLowerCase());\n  results.push({ prompt, response: text, mentioned });\n}\n\nconst score = results.filter(r => r.mentioned).length;\nreturn [{ json: { brand, email, ip_hash, score, total: 5, results } }];"
+        "jsCode": "const { brand, email, ip_hash } = $json;\n\n// 5 generic buyer-intent prompt templates\nconst templates = [\n  `What are the best tools for companies like ${brand}?`,\n  `Who are the top vendors in the same category as ${brand}?`,\n  `What do people recommend instead of or alongside ${brand}?`,\n  `Is ${brand} a good choice for B2B companies?`,\n  `What are the main alternatives to ${brand}?`\n];\n\nconst results = [];\nfor (const prompt of templates) {\n  const res = await helpers.httpRequest({\n    method: 'POST',\n    url: 'https://openrouter.ai/api/v1/chat/completions',\n    headers: { 'Authorization': 'Bearer ' + $env.OPENROUTER_API_KEY, 'Content-Type': 'application/json' },\n    body: JSON.stringify({\n      model: 'gpt-4o-mini',\n      temperature: 0.3,\n      messages: [\n        { role: 'system', content: 'You are a helpful assistant. Answer the user question directly and thoroughly.' },\n        { role: 'user', content: prompt }\n      ]\n    })\n  });\n  const text = res.choices[0].message.content;\n  const mentioned = text.toLowerCase().includes(brand.toLowerCase());\n  results.push({ prompt, response: text, mentioned });\n}\n\nconst score = results.filter(r => r.mentioned).length;\nreturn [{ json: { brand, email, ip_hash, score, total: 5, results } }];"
       }
     },
     {
-      "id": "store-result", "name": "Store Free Check in Airtable",
-      "type": "n8n-nodes-base.airtable", "typeVersion": 2, "position": [1340, 300],
-      "credentials": { "airtableTokenApi": { "id": "airtable-cred", "name": "Airtable" } },
+      "id": "store-result",
+      "name": "Store Free Check in Airtable",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2,
+      "position": [
+        1340,
+        300
+      ],
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "airtable-cred",
+          "name": "Airtable"
+        }
+      },
       "parameters": {
         "operation": "create",
-        "base": { "__rl": true, "value": "={{ $env.AIRTABLE_BASE_ID }}", "mode": "id" },
-        "table": { "__rl": true, "value": "Clients", "mode": "name" },
-        "columns": { "mappingMode": "defineBelow", "value": {
-          "name": "={{ $json.brand }}",
-          "email": "={{ $json.email }}",
-          "plan": "free_check",
-          "status": "lead",
-          "free_check_count": 1,
-          "free_check_hashes": "={{ JSON.stringify([$json.ip_hash]) }}",
-          "created_at": "={{ new Date().toISOString() }}"
-        }}, "options": {}
+        "base": {
+          "__rl": true,
+          "value": "={{ $env.AIRTABLE_BASE_ID }}",
+          "mode": "id"
+        },
+        "table": {
+          "__rl": true,
+          "value": "Clients",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "name": "={{ $json.brand }}",
+            "email": "={{ $json.email }}",
+            "plan": "free_check",
+            "status": "lead",
+            "free_check_count": 1,
+            "free_check_hashes": "={{ JSON.stringify([$json.ip_hash]) }}",
+            "created_at": "={{ new Date().toISOString() }}"
+          }
+        },
+        "options": {}
       }
     },
     {
-      "id": "send-result-email", "name": "Send Result Email",
-      "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [1560, 300],
-      "credentials": { "httpHeaderAuth": { "id": "resend-header", "name": "Resend" } },
+      "id": "send-result-email",
+      "name": "Send Result Email",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1560,
+        300
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "resend-header",
+          "name": "Resend"
+        }
+      },
       "parameters": {
         "method": "POST",
         "url": "https://api.resend.com/emails",
@@ -81,31 +169,125 @@
       }
     },
     {
-      "id": "respond-ok", "name": "Respond with Score",
-      "type": "n8n-nodes-base.respondToWebhook", "typeVersion": 1.1, "position": [1780, 300],
+      "id": "respond-ok",
+      "name": "Respond with Score",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1780,
+        300
+      ],
       "parameters": {
         "respondWith": "json",
         "responseBody": "={{ JSON.stringify({ ok: true, score: $('Run 5 Default Prompts').item.json.score, total: 5, brand: $('Run 5 Default Prompts').item.json.brand }) }}",
-        "options": { "responseCode": 200, "responseHeaders": { "entries": [{ "name": "Access-Control-Allow-Origin", "value": "*" }] } }
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              }
+            ]
+          }
+        }
       }
     },
     {
-      "id": "respond-error", "name": "Respond with Error",
-      "type": "n8n-nodes-base.respondToWebhook", "typeVersion": 1.1, "position": [900, 500],
+      "id": "respond-error",
+      "name": "Respond with Error",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        900,
+        500
+      ],
       "parameters": {
         "respondWith": "json",
         "responseBody": "={{ JSON.stringify({ ok: false, message: $json.message }) }}",
-        "options": { "responseCode": 429 }
+        "options": {
+          "responseCode": 429
+        }
       }
     }
   ],
   "connections": {
-    "Free Check Webhook":        { "main": [[{ "node": "Validate + Anti-Abuse", "type": "main", "index": 0 }]] },
-    "Validate + Anti-Abuse":     { "main": [[{ "node": "Check Abuse in Airtable", "type": "main", "index": 0 }]] },
-    "Check Abuse in Airtable":   { "main": [[{ "node": "Abuse Gate", "type": "main", "index": 0 }]] },
-    "Abuse Gate":                { "main": [[{ "node": "Run 5 Default Prompts", "type": "main", "index": 0 }]] },
-    "Run 5 Default Prompts":     { "main": [[{ "node": "Store Free Check in Airtable", "type": "main", "index": 0 }]] },
-    "Store Free Check in Airtable": { "main": [[{ "node": "Send Result Email", "type": "main", "index": 0 }]] },
-    "Send Result Email":         { "main": [[{ "node": "Respond with Score", "type": "main", "index": 0 }]] }
+    "Free Check Webhook": {
+      "main": [
+        [
+          {
+            "node": "Validate + Anti-Abuse",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate + Anti-Abuse": {
+      "main": [
+        [
+          {
+            "node": "Check Abuse in Airtable",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Abuse in Airtable": {
+      "main": [
+        [
+          {
+            "node": "Abuse Gate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Abuse Gate": {
+      "main": [
+        [
+          {
+            "node": "Run 5 Default Prompts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run 5 Default Prompts": {
+      "main": [
+        [
+          {
+            "node": "Store Free Check in Airtable",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Store Free Check in Airtable": {
+      "main": [
+        [
+          {
+            "node": "Send Result Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Result Email": {
+      "main": [
+        [
+          {
+            "node": "Respond with Score",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
   }
 }

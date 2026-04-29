@@ -37,21 +37,23 @@
 ```
 promptscore/
 ├── web/
-│   └── index.html              # Public landing page — deploy via Netlify or Vercel
-│                               # To deploy: drag-drop onto netlify.com/drop, or
-│                               # connect repo and set publish directory to web/
+│   ├── index.html              # Public landing page — deploy via Netlify
+│   ├── robots.txt              # AI crawler permissions
+│   └── sitemap.xml             # SEO sitemap
+├── netlify.toml                # Netlify build config (publish = web/)
 ├── tally/
-│   └── create_visara_forms.py  # Generates and configures Tally.so onboarding forms
-│                               # See this file for form schema and field definitions
+│   └── create_promptscore_forms.py  # Generates Tally.so onboarding forms
+│                                      # See this file for form schema
 ├── n8n/
-│   └── workflow.json           # Exportable n8n workflow for the weekly automation loop
+│   ├── workflow.json           # Weekly automation loop
+│   ├── workflow_stripe_webhook.json  # Stripe → Airtable status sync
+│   └── workflow_free_check.json       # Free visibility check lead magnet
 ├── templates/
 │   └── report_email.html       # Resend-compatible HTML email report template
 ├── airtable/
-│   └── schema.md               # Airtable base schema (tables, fields, relationships)
+│   └── schema.md               # Airtable base schema
 ├── scripts/
-│   └── check_mentions.py       # Core prompt runner: calls OpenAI + Perplexity APIs,
-│                               # parses responses for brand mentions
+│   └── check_mentions.py       # Core prompt runner via OpenRouter (all engines)
 ├── .env.example                # Environment variable template
 ├── requirements.txt            # Python dependencies
 └── README.md
@@ -68,8 +70,7 @@ promptscore/
 | Onboarding forms | Tally.so | Free |
 | Client + results DB | Airtable | Free tier |
 | Automation orchestration | n8n (cloud free or self-hosted on Railway) | Free |
-| AI API — ChatGPT | OpenAI `gpt-4o-mini` | ~€0.05–0.10/client/week |
-| AI API — Perplexity | Perplexity API | Pay-as-you-go |
+| AI API — all engines | OpenRouter (`openrouter.ai`) — one key, all models | ~€0.05–0.15/client/week |
 | Email delivery | Resend.com | Free (3,000 emails/month) |
 | Payments | Stripe (payment link) | 1.4% + €0.25/tx |
 | Domain | groundform.com (umbrella) | ~€11/year |
@@ -81,7 +82,7 @@ promptscore/
 ### 1. Clone the repo
 
 ```bash
-git clone https://github.com/yourusername/promptscore.git
+git clone https://github.com/alvee1994/promptscore.git
 cd promptscore
 ```
 
@@ -102,11 +103,12 @@ cp .env.example .env
 Required variables:
 
 ```env
-OPENAI_API_KEY=
-PERPLEXITY_API_KEY=
+OPENROUTER_API_KEY=sk-or-your-openrouter-key   # openrouter.ai — single key, all engines
 AIRTABLE_API_KEY=
 AIRTABLE_BASE_ID=
 RESEND_API_KEY=
+TALLY_API_KEY=
+STRIPE_WEBHOOK_SECRET=
 ```
 
 ### 4. Deploy the landing page
@@ -129,7 +131,7 @@ The public landing page lives at `web/index.html`.
 The onboarding form (brand name, competitor names, prompt set, email) is programmatically generated via:
 
 ```bash
-python tally/create_visara_forms.py
+python tally/create_promptscore_forms.py
 ```
 
 See `tally/create_visara_forms.py` for form field definitions, question order, and Tally API configuration. Update `TALLY_API_KEY` in your `.env` before running.
@@ -145,9 +147,15 @@ Import the schema defined in `airtable/schema.md` into your Airtable base. The b
 
 In your n8n instance:
 1. Go to **Workflows → Import**
-2. Upload `n8n/workflow.json`
-3. Update the credentials nodes with your Airtable, OpenAI, Perplexity, and Resend API keys
-4. Set the Cron trigger to `0 7 * * 1` (every Monday at 07:00)
+2. Upload each workflow from the `n8n/` directory:
+   - `workflow.json` — weekly client run (cron every Monday 07:00)
+   - `workflow_stripe_webhook.json` — Stripe → Airtable status sync (activate the webhook trigger)
+   - `workflow_free_check.json` — free visibility check lead magnet (activate the webhook trigger)
+3. In all workflows, update credentials to use:
+   - **OpenRouter** (`OPENROUTER_API_KEY`) — single key for all AI engines
+   - **Airtable** (`AIRTABLE_API_KEY`, `AIRTABLE_BASE_ID`)
+   - **Resend** (`RESEND_API_KEY`)
+4. For `workflow_free_check.json`: set the `N8N_FREE_CHECK_URL` env var to your n8n webhook URL, then inject that URL into `web/index.html` (`window.FREE_CHECK_URL`) so the landing page form calls it
 
 ---
 
@@ -267,10 +275,10 @@ Stripe is the source of truth for billing. Airtable mirrors subscription state v
 
 ## Roadmap
 
-- [ ] Free AI visibility check (instant, no login) — lead magnet on landing page
+- [x] Free AI visibility check (instant, no login) — lead magnet on landing page
 - [ ] Airtable Interface for client self-service prompt management
-- [ ] Automated Stripe webhook → Airtable status update
-- [ ] Gemini API integration
+- [x] Automated Stripe webhook → Airtable status update
+- [ ] Gemini API integration (available via OpenRouter — enable via model select in workflow)
 - [ ] White-label PDF export (Agency tier)
 - [ ] Dashboard view (post-validation only)
 

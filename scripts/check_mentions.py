@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
 Prompt Score — check_mentions.py
-Calls OpenAI + Perplexity APIs, parses responses for brand mentions.
-Uses a secondary gpt-4o-mini call for robust mention detection
-(handles brand name variations, abbreviations, indirect references).
+All AI calls routed through OpenRouter (openrouter.ai) — single key for OpenAI,
+Anthropic, Perplexity, Gemini, and more. Parses responses for brand mentions using
+a secondary gpt-4o-mini call for robust detection.
 """
 
 import os
@@ -11,7 +11,7 @@ import json
 import re
 import time
 import logging
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass
 from typing import Optional
 
 import requests
@@ -22,20 +22,24 @@ load_dotenv()
 logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"))
 logger = logging.getLogger("check_mentions")
 
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-PERPLEXITY_API_KEY = os.getenv("PERPLEXITY_API_KEY")
-OPENAI_MODEL = "gpt-4o-mini"
-PERPLEXITY_MODEL = "sonar"  # default; sonar-pro for harder queries
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
+OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 
+# Model aliases — mapped to OpenRouter model IDs
+MODEL_ALIASES = {
+    "chatgpt":    "openai/gpt-4o-mini",
+    "gpt":        "openai/gpt-4o-mini",
+    "perplexity": "perplexity/sonar",
+    "sonar":      "perplexity/sonar",
+    "gemini":     "google/gemini-2.0-flash",
+    "claude":     "anthropic/claude-3.5-haiku",
+}
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Data classes
-# ─────────────────────────────────────────────────────────────────────────────
 
 @dataclass
 class MentionResult:
     brand_mentioned: bool
-    sentiment: str  # positive | neutral | negative
+    sentiment: str          # positive | neutral | negative
     hallucination_flag: bool
     competitor_1_mentioned: bool
     competitor_2_mentioned: bool
@@ -44,32 +48,39 @@ class MentionResult:
     tokens_used: int
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Helpers
-# ─────────────────────────────────────────────────────────────────────────────
-
-def _call_openai(messages: list[dict], model: str = OPENAI_MODEL) -> tuple[str, int]:
-    """Call OpenAI Chat Completions API. Returns (content, approx_tokens)."""
+def _call_openrouter(
+    messages: list[dict],
+    model: str,
+    temperature: float = 0.3,
+) -> tuple[str, int]:
+    """
+    Route a chat completion through OpenRouter.
+    Returns (content, approx_tokens).
+    Works for OpenAI, Perplexity (sonar), Gemini, Claude — any model OpenRouter hosts.
+    """
     headers = {
-        "Authorization": f"Bearer {OPENAI_API_KEY}",
+        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
         "Content-Type": "application/json",
+        "HTTP-Referer": "https://promptscore.io",
+        "X-Title": "Prompt Score",
     }
     payload = {
         "model": model,
         "messages": messages,
-        "temperature": 0.3,
+        "temperature": temperature,
     }
     resp = requests.post(
-        "https://api.openai.com/v1/chat/completions",
+        f"{OPENROUTER_BASE_URL}/chat/completions",
         headers=headers,
         json=payload,
-        timeout=60,
+        timeout=90,
     )
     resp.raise_for_status()
     data = resp.json()
-    content = data["choices"][0]["message"]["content"]
-    tokens = data.get("usage", {}).get("total_tokens", 0)
-    return content, tokens
+    # OpenRouter may return usage at top level or nested
+    usage = data.get("usage", {})
+    tokens = usage.get("total_tokens", 0) or usage.get("completion_tokens", 0)
+    return data["choices"][0]["message"]["content"], tokens
 
 
 @retry(
@@ -77,38 +88,16 @@ def _call_openai(messages: list[dict], model: str = OPENAI_MODEL) -> tuple[str, 
     stop=stop_after_attempt(3),
     wait=wait_exponential(multiplier=2, min=4, max=30),
 )
-def call_perplexity(prompt: str, model: str = PERPLEXITY_MODEL) -> tuple[str, int]:
-    """Call Perplexity API (Sonar). Returns (content, approx_tokens)."""
-    headers = {
-        "Authorization": f"Bearer {PERPLEXITY_API_KEY}",
-        "Content-Type": "application/json",
-        "Accept": "application/json",
-    }
-    payload = {
-        "model": model,
-        "messages": [
-            {
-                "role": "system",
-                "content": (
-                    "You are a helpful assistant. Answer the user's question directly "
-                    "and in full. Do not say you are an AI."
-                ),
-            },
-            {"role": "user", "content": prompt},
-        ],
-    }
-    resp = requests.post(
-        "https://api.perplexity.ai/chat/completions",
-        headers=headers,
-        json=payload,
-        timeout=60,
-    )
-    resp.raise_for_status()
-    data = resp.json()
-    content = data["choices"][0]["message"]["content"]
-    tokens = data.get("usage", {}).get("total_tokens", 0)
-    return content, tokens
+def _call_openrouter_with_retry(
+    messages: list[dict],
+    model: str,
+    temperature: float = 0.3,
+) -> tuple[str, int]:
+    """Wrapper with tenacity retry on transient errors."""
+    return _call_openrouter(messages, model, temperature)
 
+
+# ─────────────────────────────────────────────────────────────────────────────
 
 def parse_mentions_with_llm(
     response: str,
@@ -137,60 +126,70 @@ def parse_mentions_with_llm(
         f'a URL or domain unless it is explicitly discussed.'
     )
 
-    user_prompt = (
-        f'Brand to check: "{brand_name}"\n'
-        f'Competitors to check: {competitors or "none"}\n\n'
-        f'Raw AI response:\n---\n{response}\n---'
-    )
-
     messages = [
         {"role": "system", "content": system_prompt},
-        {"role": "user", "content": user_prompt},
+        {
+            "role": "user",
+            "content": (
+                f'Brand to check: "{brand_name}"\n'
+                f'Competitors to check: {competitors or "none"}\n\n'
+                f'Raw AI response:\n---\n{response}\n---'
+            ),
+        },
     ]
 
-    content, _ = _call_openai(messages, model=OPENAI_MODEL)
-    # Strip markdown code fences if present
+    content, _ = _call_openrouter_with_retry(messages, model=MODEL_ALIASES["gpt"])
     content = re.sub(r"^```json\s*", "", content.strip())
     content = re.sub(r"^```\s*", "", content.strip())
     content = re.sub(r"\s*```$", "", content.strip())
 
     try:
-        parsed = json.loads(content)
+        return json.loads(content)
     except json.JSONDecodeError:
         logger.warning("Failed to parse LLM mention analysis, falling back to string match")
-        brand_mentioned = brand_name.lower() in response.lower()
+        brand_lower = brand_name.lower()
         return {
-            "brand_mentioned": brand_mentioned,
+            "brand_mentioned": brand_lower in response.lower(),
             "sentiment": "neutral",
             "hallucination_flag": False,
             "competitor_1_mentioned": (competitor_1 or "").lower() in response.lower() if competitor_1 else False,
             "competitor_2_mentioned": (competitor_2 or "").lower() in response.lower() if competitor_2 else False,
         }
 
-    return parsed
-
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Main entry points
+# Engine runners
 # ─────────────────────────────────────────────────────────────────────────────
 
-def check_chatgpt(prompt: str, brand_name: str, competitor_1: Optional[str], competitor_2: Optional[str]) -> MentionResult:
-    """Run a single prompt against ChatGPT (gpt-4o-mini)."""
-    logger.info(f"[ChatGPT] Running: {prompt[:60]}...")
+def check_engine(
+    engine: str,
+    prompt: str,
+    brand_name: str,
+    competitor_1: Optional[str],
+    competitor_2: Optional[str],
+) -> MentionResult:
+    """
+    Dispatch a single prompt to any engine by name.
+    engine: one of 'chatgpt', 'perplexity', 'gemini', 'claude'
+    All calls go through OpenRouter via a single API key.
+    """
+    model = MODEL_ALIASES.get(engine, engine)  # accept alias or raw model ID
+
+    logger.info(f"[{engine}] Running: {prompt[:60]}...")
 
     messages = [
         {
             "role": "system",
             "content": (
-                "You are a helpful assistant. Answer the user's question directly and thoroughly. "
-                "Do not say you are an AI or refer to your capabilities."
+                "You are a helpful assistant. Answer the user's question directly "
+                "and thoroughly. Do not say you are an AI."
             ),
         },
         {"role": "user", "content": prompt},
     ]
 
-    response, tokens = _call_openai(messages)
-    parsed = parse_mentions_with_llm(response, brand_name, competitor_1, competitor_2, "chatgpt")
+    response, tokens = _call_openrouter_with_retry(messages, model=model, temperature=0.3)
+    parsed = parse_mentions_with_llm(response, brand_name, competitor_1, competitor_2, engine)
 
     return MentionResult(
         brand_mentioned=parsed["brand_mentioned"],
@@ -199,94 +198,44 @@ def check_chatgpt(prompt: str, brand_name: str, competitor_1: Optional[str], com
         competitor_1_mentioned=parsed.get("competitor_1_mentioned", False),
         competitor_2_mentioned=parsed.get("competitor_2_mentioned", False),
         raw_response=response,
-        engine="chatgpt",
+        engine=engine,
         tokens_used=tokens,
     )
 
 
-def check_perplexity(prompt: str, brand_name: str, competitor_1: Optional[str], competitor_2: Optional[str]) -> MentionResult:
-    """Run a single prompt against Perplexity Sonar."""
-    logger.info(f"[Perplexity] Running: {prompt[:60]}...")
-
-    response, tokens = call_perplexity(prompt)
-    parsed = parse_mentions_with_llm(response, brand_name, competitor_1, competitor_2, "perplexity")
-
-    return MentionResult(
-        brand_mentioned=parsed["brand_mentioned"],
-        sentiment=parsed["sentiment"],
-        hallucination_flag=parsed["hallucination_flag"],
-        competitor_1_mentioned=parsed.get("competitor_1_mentioned", False),
-        competitor_2_mentioned=parsed.get("competitor_2_mentioned", False),
-        raw_response=response,
-        engine="perplexity",
-        tokens_used=tokens,
-    )
+# Convenience aliases for the old entry-point names
+def check_chatgpt(prompt: str, brand: str, c1=None, c2=None) -> MentionResult:
+    return check_engine("chatgpt", prompt, brand, c1, c2)
 
 
-def check_gemini(prompt: str, brand_name: str, competitor_1: Optional[str], competitor_2: Optional[str]) -> MentionResult:
-    """
-    Run a single prompt against Google Gemini via the Vertex AI API.
-    Requires GOOGLE_CLOUD_PROJECT and GOOGLE_APPLICATION_CREDENTIALS env vars,
-    OR a Gemini API key via GEMINI_API_KEY.
-    """
-    import os as _os
-    gemini_key = _os.getenv("GEMINI_API_KEY")
+def check_perplexity(prompt: str, brand: str, c1=None, c2=None) -> MentionResult:
+    return check_engine("perplexity", prompt, brand, c1, c2)
 
-    logger.info(f"[Gemini] Running: {prompt[:60]}...")
 
-    if gemini_key:
-        # Direct Gemini API
-        headers = {"Content-Type": "application/json"}
-        payload = {
-            "contents": [{"parts": [{"text": prompt}]}],
-            "generationConfig": {"temperature": 0.3, "maxOutputTokens": 2048},
-        }
-        resp = requests.post(
-            f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={gemini_key}",
-            headers=headers,
-            json=payload,
-            timeout=60,
-        )
-        resp.raise_for_status()
-        data = resp.json()
-        response = data["candidates"][0]["content"]["parts"][0]["text"]
-        tokens = data.get("usageMetadata", {}).get("totalTokenCount", 0)
-    else:
-        raise NotImplementedError(
-            "Gemini via Vertex AI not yet implemented. "
-            "Set GEMINI_API_KEY in your .env to use direct Gemini API."
-        )
+def check_gemini(prompt: str, brand: str, c1=None, c2=None) -> MentionResult:
+    return check_engine("gemini", prompt, brand, c1, c2)
 
-    parsed = parse_mentions_with_llm(response, brand_name, competitor_1, competitor_2, "gemini")
 
-    return MentionResult(
-        brand_mentioned=parsed["brand_mentioned"],
-        sentiment=parsed["sentiment"],
-        hallucination_flag=parsed["hallucination_flag"],
-        competitor_1_mentioned=parsed.get("competitor_1_mentioned", False),
-        competitor_2_mentioned=parsed.get("competitor_2_mentioned", False),
-        raw_response=response,
-        engine="gemini",
-        tokens_used=tokens,
-    )
+def check_claude(prompt: str, brand: str, c1=None, c2=None) -> MentionResult:
+    return check_engine("claude", prompt, brand, c1, c2)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Batch runner for a full prompt list
+# Batch runner
 # ─────────────────────────────────────────────────────────────────────────────
 
 def run_prompts(
     prompts: list[str],
     brand_name: str,
-    competitor_1: Optional[str],
-    competitor_2: Optional[str],
+    competitor_1: Optional[str] = None,
+    competitor_2: Optional[str] = None,
     engines: list[str] = None,
 ) -> list[MentionResult]:
     """
     Run all prompts across specified engines.
-    Default engines: chatgpt, perplexity, gemini
+    Default engines: chatgpt, perplexity
     """
-    engines = engines or ["chatgpt", "perplexity", "gemini"]
+    engines = engines or ["chatgpt", "perplexity"]
     results: list[MentionResult] = []
 
     for i, prompt in enumerate(prompts):
@@ -294,24 +243,9 @@ def run_prompts(
 
         for engine in engines:
             try:
-                if engine == "chatgpt":
-                    result = check_chatgpt(prompt, brand_name, competitor_1, competitor_2)
-                elif engine == "perplexity":
-                    result = check_perplexity(prompt, brand_name, competitor_1, competitor_2)
-                elif engine == "gemini":
-                    try:
-                        result = check_gemini(prompt, brand_name, competitor_1, competitor_2)
-                    except NotImplementedError:
-                        logger.warning("Gemini not configured, skipping")
-                        continue
-                else:
-                    logger.warning(f"Unknown engine: {engine}")
-                    continue
-
+                result = check_engine(engine, prompt, brand_name, competitor_1, competitor_2)
                 results.append(result)
-
-                # Rate limit: small delay between calls
-                time.sleep(0.5)
+                time.sleep(0.5)  # rate limit between calls
 
             except Exception as exc:
                 logger.error(f"  Error on {engine} for prompt {i+1}: {exc}")
@@ -321,7 +255,7 @@ def run_prompts(
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# CLI (quick test)
+# CLI
 # ─────────────────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
@@ -329,18 +263,21 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Test brand mention detection")
     parser.add_argument("brand", help="Brand name to check")
-    parser.add_argument("--prompt", default='"best CRM for small startups"', help="Prompt to run")
+    parser.add_argument("--prompt", default='"best CRM for small startups"',
+                       help="Prompt to run")
     parser.add_argument("--competitor", default=None, help="Competitor brand")
+    parser.add_argument("--engine", default="chatgpt",
+                       help="Engine: chatgpt, perplexity, gemini, claude")
     args = parser.parse_args()
 
-    print(f"Checking brand: {args.brand}")
+    print(f"Brand: {args.brand}")
+    print(f"Engine: {args.engine}")
     print(f"Prompt: {args.prompt}")
-    print(f"Competitor: {args.competitor or 'none'}")
 
-    result = check_chatgpt(args.prompt, args.brand, args.competitor, None)
-    print(f"\nChatGPT result:")
-    print(f"  Mentioned:  {result.brand_mentioned}")
-    print(f"  Sentiment:  {result.sentiment}")
+    result = check_engine(args.engine, args.prompt, args.brand, args.competitor, None)
+    print(f"\nResult:")
+    print(f"  Mentioned:     {result.brand_mentioned}")
+    print(f"  Sentiment:     {result.sentiment}")
     print(f"  Hallucination: {result.hallucination_flag}")
-    print(f"  Competitor mentioned: {result.competitor_1_mentioned}")
-    print(f"  Tokens: {result.tokens_used}")
+    print(f"  Competitor:   {result.competitor_1_mentioned}")
+    print(f"  Tokens:       {result.tokens_used}")
