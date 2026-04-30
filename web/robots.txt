@@ -23,4 +23,4 @@ Allow: /
 User-agent: Googlebot
 Allow: /
 
-Sitemap: https://promptscore.io/sitemap.xml
+Sitemap: https://sovcheck.online/sitemap.xml

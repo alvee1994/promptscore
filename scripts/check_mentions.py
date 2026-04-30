@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Prompt Score — check_mentions.py
+SOV Check — check_mentions.py
 All AI calls routed through OpenRouter (openrouter.ai) — single key for OpenAI,
 Anthropic, Perplexity, Gemini, and more. Parses responses for brand mentions using
 a secondary gpt-4o-mini call for robust detection.
@@ -61,8 +61,8 @@ def _call_openrouter(
     headers = {
         "Authorization": f"Bearer {OPENROUTER_API_KEY}",
         "Content-Type": "application/json",
-        "HTTP-Referer": "https://promptscore.io",
-        "X-Title": "Prompt Score",
+        "HTTP-Referer": "https://sovcheck.online",
+        "X-Title": "SOV Check",
     }
     payload = {
         "model": model,

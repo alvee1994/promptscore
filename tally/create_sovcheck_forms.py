@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Prompt Score — Create all 3 Tally forms via direct API
-Run: python create_promptscore_forms.py
+SOV Check — Create all 3 Tally forms via direct API
+Run: python create_sovcheck_forms.py
 Requires: pip install requests
 """
 
@@ -136,7 +136,7 @@ PROMPT_INSTRUCTIONS = (
     f"Each prompt must be <strong>at least 10 characters</strong> and written as a real buyer search "
     f"(e.g. <em>\"best cloud consultant Rotterdam\"</em>).<br><br>"
     f"💡 <strong>Already a customer?</strong> "
-    f"<a href=\"https://promptscore.io/my-prompts?cid={{customer_id}}\">View &amp; copy your current prompts here</a> "
+    f"<a href=\"https://sovcheck.online/my-prompts?cid={{customer_id}}\">View &amp; copy your current prompts here</a> "
     f"— then leave fields below <strong>blank</strong> to keep them unchanged."
 )
 
@@ -148,11 +148,11 @@ def build_starter():
     blocks += [{
         "uuid": uid(), "type": "FORM_TITLE",
         "groupUuid": uid(), "groupType": "TEXT",
-        "payload": {"html": "Prompt Score — Starter Setup"}
+        "payload": {"html": "SOV Check — Starter Setup"}
     }]
     blocks += hidden_fields("customer_id", "email", "plan")
-    blocks += text_question("Brand name", "e.g. Prompt Score", required=True)
-    blocks += text_question("Brand website", "e.g. https://promptscore.io", required=True, input_type="INPUT_LINK")
+    blocks += text_question("Brand name", "e.g. SOV Check", required=True)
+    blocks += text_question("Brand website", "e.g. https://sovcheck.online", required=True, input_type="INPUT_LINK")
     blocks += dropdown_question("Industry", ["B2B SaaS", "Digital Agency", "Consulting", "E-commerce", "Other"], required=True)
     blocks += text_question("Primary market", "e.g. Rotterdam, Netherlands", required=True)
     blocks += heading("Your 10 buyer-intent prompts")
@@ -162,9 +162,9 @@ def build_starter():
     blocks += page_break(thank_you=True)
     blocks += heading("You're all set! 🎉")
     blocks += text_block(
-        "Your settings have been saved. Prompt Score will run your prompts through ChatGPT this week "
+        "Your settings have been saved. SOV Check will run your prompts through ChatGPT this week "
         "and send your first report to your inbox.<br><br>"
-        "Want competitor tracking + 3 AI engines? <a href=\"https://promptscore.io/upgrade\">Upgrade to Pro →</a>"
+        "Want competitor tracking + 3 AI engines? <a href=\"https://sovcheck.online/upgrade\">Upgrade to Pro →</a>"
     )
     return {
         "status": "PUBLISHED",
@@ -188,11 +188,11 @@ def build_pro():
     blocks += [{
         "uuid": uid(), "type": "FORM_TITLE",
         "groupUuid": uid(), "groupType": "TEXT",
-        "payload": {"html": "Prompt Score — Pro Setup"}
+        "payload": {"html": "SOV Check — Pro Setup"}
     }]
     blocks += hidden_fields("customer_id", "email", "plan")
-    blocks += text_question("Brand name", "e.g. Prompt Score", required=True)
-    blocks += text_question("Brand website", "e.g. https://promptscore.io", required=True, input_type="INPUT_LINK")
+    blocks += text_question("Brand name", "e.g. SOV Check", required=True)
+    blocks += text_question("Brand website", "e.g. https://sovcheck.online", required=True, input_type="INPUT_LINK")
     blocks += text_question("Competitor #1", "e.g. BrandRadar", required=True)
     blocks += text_question("Competitor #2", "e.g. Mention.com (optional)", required=False)
     blocks += dropdown_question("Industry", ["B2B SaaS", "Digital Agency", "Consulting", "E-commerce", "Other"], required=True)
@@ -221,9 +221,9 @@ def build_pro():
     blocks += page_break(thank_you=True)
     blocks += heading("You're all set! 🎉")
     blocks += text_block(
-        "Your settings have been saved. Prompt Score will monitor your brand and 2 competitors "
+        "Your settings have been saved. SOV Check will monitor your brand and 2 competitors "
         "across 3 AI engines and deliver your weekly report.<br><br>"
-        "Running an agency? <a href=\"https://promptscore.io/upgrade\">See Agency plan →</a>"
+        "Running an agency? <a href=\"https://sovcheck.online/upgrade\">See Agency plan →</a>"
     )
     return {
         "status": "PUBLISHED",
@@ -247,7 +247,7 @@ def build_agency():
     blocks += [{
         "uuid": uid(), "type": "FORM_TITLE",
         "groupUuid": uid(), "groupType": "TEXT",
-        "payload": {"html": "Prompt Score — Agency Setup"}
+        "payload": {"html": "SOV Check — Agency Setup"}
     }]
     blocks += hidden_fields("customer_id", "email", "plan")
     blocks += text_block(
@@ -287,7 +287,7 @@ def build_agency():
     blocks += page_break(thank_you=True)
     blocks += heading("You're all set! 🎉")
     blocks += text_block(
-        "Your agency account is configured. Prompt Score will monitor all your brands across 3 AI engines "
+        "Your agency account is configured. SOV Check will monitor all your brands across 3 AI engines "
         "and deliver white-label PDF reports every week."
     )
     return {

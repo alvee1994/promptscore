@@ -1,11 +1,19 @@
 {
-  "name": "Prompt Score — Stripe Webhook → Airtable",
+  "name": "Shave Of Voice, Checked! \u2014 Stripe Webhook \u2192 Airtable",
   "active": false,
-  "settings": { "executionOrder": "v1" },
+  "settings": {
+    "executionOrder": "v1"
+  },
   "nodes": [
     {
-      "id": "webhook", "name": "Stripe Webhook",
-      "type": "n8n-nodes-base.webhook", "typeVersion": 2, "position": [240, 300],
+      "id": "webhook",
+      "name": "Stripe Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        240,
+        300
+      ],
       "parameters": {
         "httpMethod": "POST",
         "path": "stripe-webhook",
@@ -14,188 +22,667 @@
       }
     },
     {
-      "id": "verify", "name": "Verify Stripe Signature",
-      "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [460, 300],
+      "id": "verify",
+      "name": "Verify Stripe Signature",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        460,
+        300
+      ],
       "parameters": {
         "jsCode": "// Verify Stripe webhook signature\nconst crypto = require('crypto');\nconst secret = $env.STRIPE_WEBHOOK_SECRET;\nconst sig = $input.item.json.headers['stripe-signature'];\nconst rawBody = $input.item.json.rawBody || JSON.stringify($input.item.json.body);\n\nif (!secret || !sig) throw new Error('Missing Stripe signature or secret');\n\nconst parts = sig.split(',').reduce((acc, p) => { const [k,v] = p.split('='); acc[k] = v; return acc; }, {});\nconst payload = parts.t + '.' + rawBody;\nconst expected = crypto.createHmac('sha256', secret).update(payload).digest('hex');\nif (expected !== parts.v1) throw new Error('Invalid Stripe signature');\n\nconst event = $input.item.json.body;\nreturn [{ json: { event_type: event.type, data: event.data.object } }];"
       }
     },
     {
-      "id": "route", "name": "Route by Event Type",
-      "type": "n8n-nodes-base.switch", "typeVersion": 3, "position": [680, 300],
+      "id": "route",
+      "name": "Route by Event Type",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [
+        680,
+        300
+      ],
       "parameters": {
         "mode": "rules",
         "rules": {
           "values": [
-            { "conditions": { "options": { "caseSensitive": false }, "conditions": [{ "leftValue": "={{ $json.event_type }}", "rightValue": "checkout.session.completed", "operator": { "type": "string", "operation": "equals" } }] }, "renameOutput": true, "outputKey": "checkout_completed" },
-            { "conditions": { "options": { "caseSensitive": false }, "conditions": [{ "leftValue": "={{ $json.event_type }}", "rightValue": "customer.subscription.updated", "operator": { "type": "string", "operation": "equals" } }] }, "renameOutput": true, "outputKey": "subscription_updated" },
-            { "conditions": { "options": { "caseSensitive": false }, "conditions": [{ "leftValue": "={{ $json.event_type }}", "rightValue": "customer.subscription.deleted", "operator": { "type": "string", "operation": "equals" } }] }, "renameOutput": true, "outputKey": "subscription_deleted" },
-            { "conditions": { "options": { "caseSensitive": false }, "conditions": [{ "leftValue": "={{ $json.event_type }}", "rightValue": "invoice.payment_failed", "operator": { "type": "string", "operation": "equals" } }] }, "renameOutput": true, "outputKey": "payment_failed" }
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.event_type }}",
+                    "rightValue": "checkout.session.completed",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "checkout_completed"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.event_type }}",
+                    "rightValue": "customer.subscription.updated",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "subscription_updated"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.event_type }}",
+                    "rightValue": "customer.subscription.deleted",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "subscription_deleted"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.event_type }}",
+                    "rightValue": "invoice.payment_failed",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "payment_failed"
+            }
           ]
         },
         "options": {}
       }
     },
     {
-      "id": "map-checkout", "name": "Map Checkout Data",
-      "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [900, 180],
+      "id": "map-checkout",
+      "name": "Map Checkout Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        900,
+        180
+      ],
       "parameters": {
         "jsCode": "const d = $json.data;\nconst priceMap = {\n  [($env.STRIPE_STARTER_PRICE_ID||'starter')]: { plan: 'starter', max_prompts: 10 },\n  [($env.STRIPE_PRO_PRICE_ID||'pro')]:     { plan: 'pro',     max_prompts: 50 },\n  [($env.STRIPE_AGENCY_PRICE_ID||'agency')]: { plan: 'agency',  max_prompts: 200 }\n};\nconst lineItem = d.line_items?.data?.[0];\nconst priceId = lineItem?.price?.id || '';\nconst tier = priceMap[priceId] || { plan: 'starter', max_prompts: 10 };\nreturn [{ json: {\n  email: d.customer_details?.email || d.customer_email,\n  stripe_customer_id: d.customer,\n  stripe_subscription_id: d.subscription,\n  plan: tier.plan,\n  max_prompts: tier.max_prompts,\n  status: 'active'\n} }];"
       }
     },
     {
-      "id": "find-client-checkout", "name": "Find Client by Email",
-      "type": "n8n-nodes-base.airtable", "typeVersion": 2, "position": [1120, 180],
-      "credentials": { "airtableTokenApi": { "id": "airtable-cred", "name": "Airtable" } },
+      "id": "find-client-checkout",
+      "name": "Find Client by Email",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        180
+      ],
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "airtable-cred",
+          "name": "Airtable"
+        }
+      },
       "parameters": {
         "operation": "list",
-        "base": { "__rl": true, "value": "={{ $env.AIRTABLE_BASE_ID }}", "mode": "id" },
-        "table": { "__rl": true, "value": "Clients", "mode": "name" },
+        "base": {
+          "__rl": true,
+          "value": "={{ $env.AIRTABLE_BASE_ID }}",
+          "mode": "id"
+        },
+        "table": {
+          "__rl": true,
+          "value": "Clients",
+          "mode": "name"
+        },
         "filterByFormula": "={email}='{{ $json.email }}'",
-        "options": { "fields": ["id"] }
+        "options": {
+          "fields": [
+            "id"
+          ]
+        }
       }
     },
     {
-      "id": "upsert-client", "name": "Update or Create Client",
-      "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [1340, 180],
+      "id": "upsert-client",
+      "name": "Update or Create Client",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1340,
+        180
+      ],
       "parameters": {
         "jsCode": "const existing = $('Find Client by Email').all();\nconst payload = $('Map Checkout Data').item.json;\nconst baseId = $env.AIRTABLE_BASE_ID;\nconst token = $env.AIRTABLE_API_KEY;\n\nconst fields = {\n  plan: payload.plan,\n  max_prompts: payload.max_prompts,\n  status: payload.status,\n  stripe_customer_id: payload.stripe_customer_id,\n  stripe_subscription_id: payload.stripe_subscription_id\n};\n\nif (existing.length > 0) {\n  const recordId = existing[0].json.id;\n  await helpers.httpRequest({\n    method: 'PATCH',\n    url: `https://api.airtable.com/v0/${baseId}/Clients/${recordId}`,\n    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },\n    body: JSON.stringify({ fields })\n  });\n  return [{ json: { action: 'updated', record_id: recordId, ...payload } }];\n} else {\n  const res = await helpers.httpRequest({\n    method: 'POST',\n    url: `https://api.airtable.com/v0/${baseId}/Clients`,\n    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },\n    body: JSON.stringify({ fields: { ...fields, email: payload.email } })\n  });\n  return [{ json: { action: 'created', record_id: res.id, ...payload } }];\n}"
       }
     },
     {
-      "id": "map-sub-updated", "name": "Map Subscription Update",
-      "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [900, 300],
+      "id": "map-sub-updated",
+      "name": "Map Subscription Update",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        900,
+        300
+      ],
       "parameters": {
         "jsCode": "const d = $json.data;\nconst priceMap = {\n  [($env.STRIPE_STARTER_PRICE_ID||'starter')]: { plan: 'starter', max_prompts: 10 },\n  [($env.STRIPE_PRO_PRICE_ID||'pro')]:     { plan: 'pro',     max_prompts: 50 },\n  [($env.STRIPE_AGENCY_PRICE_ID||'agency')]: { plan: 'agency',  max_prompts: 200 }\n};\nconst priceId = d.items?.data?.[0]?.price?.id || '';\nconst tier = priceMap[priceId] || { plan: 'starter', max_prompts: 10 };\nconst statusMap = { active: 'active', trialing: 'trialing', past_due: 'past_due', canceled: 'canceled', unpaid: 'past_due' };\nreturn [{ json: {\n  stripe_customer_id: d.customer,\n  stripe_subscription_id: d.id,\n  plan: tier.plan,\n  max_prompts: tier.max_prompts,\n  status: statusMap[d.status] || 'active'\n} }];"
       }
     },
     {
-      "id": "find-client-sub", "name": "Find Client by Stripe ID",
-      "type": "n8n-nodes-base.airtable", "typeVersion": 2, "position": [1120, 300],
-      "credentials": { "airtableTokenApi": { "id": "airtable-cred", "name": "Airtable" } },
+      "id": "find-client-sub",
+      "name": "Find Client by Stripe ID",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        300
+      ],
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "airtable-cred",
+          "name": "Airtable"
+        }
+      },
       "parameters": {
         "operation": "list",
-        "base": { "__rl": true, "value": "={{ $env.AIRTABLE_BASE_ID }}", "mode": "id" },
-        "table": { "__rl": true, "value": "Clients", "mode": "name" },
+        "base": {
+          "__rl": true,
+          "value": "={{ $env.AIRTABLE_BASE_ID }}",
+          "mode": "id"
+        },
+        "table": {
+          "__rl": true,
+          "value": "Clients",
+          "mode": "name"
+        },
         "filterByFormula": "={stripe_customer_id}='{{ $json.stripe_customer_id }}'",
-        "options": { "fields": ["id"] }
+        "options": {
+          "fields": [
+            "id"
+          ]
+        }
       }
     },
     {
-      "id": "update-client-sub", "name": "Update Client Status",
-      "type": "n8n-nodes-base.airtable", "typeVersion": 2, "position": [1340, 300],
-      "credentials": { "airtableTokenApi": { "id": "airtable-cred", "name": "Airtable" } },
+      "id": "update-client-sub",
+      "name": "Update Client Status",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2,
+      "position": [
+        1340,
+        300
+      ],
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "airtable-cred",
+          "name": "Airtable"
+        }
+      },
       "parameters": {
         "operation": "update",
-        "base": { "__rl": true, "value": "={{ $env.AIRTABLE_BASE_ID }}", "mode": "id" },
-        "table": { "__rl": true, "value": "Clients", "mode": "name" },
+        "base": {
+          "__rl": true,
+          "value": "={{ $env.AIRTABLE_BASE_ID }}",
+          "mode": "id"
+        },
+        "table": {
+          "__rl": true,
+          "value": "Clients",
+          "mode": "name"
+        },
         "id": "={{ $('Find Client by Stripe ID').item.json.id }}",
-        "columns": { "mappingMode": "defineBelow", "value": {
-          "plan": "={{ $('Map Subscription Update').item.json.plan }}",
-          "max_prompts": "={{ $('Map Subscription Update').item.json.max_prompts }}",
-          "status": "={{ $('Map Subscription Update').item.json.status }}",
-          "stripe_subscription_id": "={{ $('Map Subscription Update').item.json.stripe_subscription_id }}"
-        }}, "options": {}
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "plan": "={{ $('Map Subscription Update').item.json.plan }}",
+            "max_prompts": "={{ $('Map Subscription Update').item.json.max_prompts }}",
+            "status": "={{ $('Map Subscription Update').item.json.status }}",
+            "stripe_subscription_id": "={{ $('Map Subscription Update').item.json.stripe_subscription_id }}"
+          }
+        },
+        "options": {}
       }
     },
     {
-      "id": "map-canceled", "name": "Map Cancellation",
-      "type": "n8n-nodes-base.set", "typeVersion": 3.4, "position": [900, 420],
+      "id": "map-canceled",
+      "name": "Map Cancellation",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        900,
+        420
+      ],
       "parameters": {
-        "assignments": { "assignments": [
-          { "id": "1", "name": "stripe_customer_id", "value": "={{ $json.data.customer }}", "type": "string" },
-          { "id": "2", "name": "status", "value": "canceled", "type": "string" }
-        ]}, "options": {}
+        "assignments": {
+          "assignments": [
+            {
+              "id": "1",
+              "name": "stripe_customer_id",
+              "value": "={{ $json.data.customer }}",
+              "type": "string"
+            },
+            {
+              "id": "2",
+              "name": "status",
+              "value": "canceled",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
       }
     },
     {
-      "id": "find-client-canceled", "name": "Find Client (Canceled)",
-      "type": "n8n-nodes-base.airtable", "typeVersion": 2, "position": [1120, 420],
-      "credentials": { "airtableTokenApi": { "id": "airtable-cred", "name": "Airtable" } },
+      "id": "find-client-canceled",
+      "name": "Find Client (Canceled)",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        420
+      ],
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "airtable-cred",
+          "name": "Airtable"
+        }
+      },
       "parameters": {
         "operation": "list",
-        "base": { "__rl": true, "value": "={{ $env.AIRTABLE_BASE_ID }}", "mode": "id" },
-        "table": { "__rl": true, "value": "Clients", "mode": "name" },
+        "base": {
+          "__rl": true,
+          "value": "={{ $env.AIRTABLE_BASE_ID }}",
+          "mode": "id"
+        },
+        "table": {
+          "__rl": true,
+          "value": "Clients",
+          "mode": "name"
+        },
         "filterByFormula": "={stripe_customer_id}='{{ $json.stripe_customer_id }}'",
-        "options": { "fields": ["id"] }
+        "options": {
+          "fields": [
+            "id"
+          ]
+        }
       }
     },
     {
-      "id": "update-canceled", "name": "Set Status Canceled",
-      "type": "n8n-nodes-base.airtable", "typeVersion": 2, "position": [1340, 420],
-      "credentials": { "airtableTokenApi": { "id": "airtable-cred", "name": "Airtable" } },
+      "id": "update-canceled",
+      "name": "Set Status Canceled",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2,
+      "position": [
+        1340,
+        420
+      ],
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "airtable-cred",
+          "name": "Airtable"
+        }
+      },
       "parameters": {
         "operation": "update",
-        "base": { "__rl": true, "value": "={{ $env.AIRTABLE_BASE_ID }}", "mode": "id" },
-        "table": { "__rl": true, "value": "Clients", "mode": "name" },
+        "base": {
+          "__rl": true,
+          "value": "={{ $env.AIRTABLE_BASE_ID }}",
+          "mode": "id"
+        },
+        "table": {
+          "__rl": true,
+          "value": "Clients",
+          "mode": "name"
+        },
         "id": "={{ $('Find Client (Canceled)').item.json.id }}",
-        "columns": { "mappingMode": "defineBelow", "value": { "status": "canceled" } },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "status": "canceled"
+          }
+        },
         "options": {}
       }
     },
     {
-      "id": "map-failed", "name": "Map Payment Failed",
-      "type": "n8n-nodes-base.set", "typeVersion": 3.4, "position": [900, 540],
+      "id": "map-failed",
+      "name": "Map Payment Failed",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        900,
+        540
+      ],
       "parameters": {
-        "assignments": { "assignments": [
-          { "id": "1", "name": "stripe_customer_id", "value": "={{ $json.data.customer }}", "type": "string" },
-          { "id": "2", "name": "status", "value": "past_due", "type": "string" }
-        ]}, "options": {}
+        "assignments": {
+          "assignments": [
+            {
+              "id": "1",
+              "name": "stripe_customer_id",
+              "value": "={{ $json.data.customer }}",
+              "type": "string"
+            },
+            {
+              "id": "2",
+              "name": "status",
+              "value": "past_due",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
       }
     },
     {
-      "id": "find-client-failed", "name": "Find Client (Failed)",
-      "type": "n8n-nodes-base.airtable", "typeVersion": 2, "position": [1120, 540],
-      "credentials": { "airtableTokenApi": { "id": "airtable-cred", "name": "Airtable" } },
+      "id": "find-client-failed",
+      "name": "Find Client (Failed)",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        540
+      ],
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "airtable-cred",
+          "name": "Airtable"
+        }
+      },
       "parameters": {
         "operation": "list",
-        "base": { "__rl": true, "value": "={{ $env.AIRTABLE_BASE_ID }}", "mode": "id" },
-        "table": { "__rl": true, "value": "Clients", "mode": "name" },
+        "base": {
+          "__rl": true,
+          "value": "={{ $env.AIRTABLE_BASE_ID }}",
+          "mode": "id"
+        },
+        "table": {
+          "__rl": true,
+          "value": "Clients",
+          "mode": "name"
+        },
         "filterByFormula": "={stripe_customer_id}='{{ $json.stripe_customer_id }}'",
-        "options": { "fields": ["id"] }
+        "options": {
+          "fields": [
+            "id"
+          ]
+        }
       }
     },
     {
-      "id": "update-past-due", "name": "Set Status Past Due",
-      "type": "n8n-nodes-base.airtable", "typeVersion": 2, "position": [1340, 540],
-      "credentials": { "airtableTokenApi": { "id": "airtable-cred", "name": "Airtable" } },
+      "id": "update-past-due",
+      "name": "Set Status Past Due",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2,
+      "position": [
+        1340,
+        540
+      ],
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "airtable-cred",
+          "name": "Airtable"
+        }
+      },
       "parameters": {
         "operation": "update",
-        "base": { "__rl": true, "value": "={{ $env.AIRTABLE_BASE_ID }}", "mode": "id" },
-        "table": { "__rl": true, "value": "Clients", "mode": "name" },
+        "base": {
+          "__rl": true,
+          "value": "={{ $env.AIRTABLE_BASE_ID }}",
+          "mode": "id"
+        },
+        "table": {
+          "__rl": true,
+          "value": "Clients",
+          "mode": "name"
+        },
         "id": "={{ $('Find Client (Failed)').item.json.id }}",
-        "columns": { "mappingMode": "defineBelow", "value": { "status": "past_due" } },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "status": "past_due"
+          }
+        },
         "options": {}
       }
     },
     {
-      "id": "respond", "name": "Respond 200",
-      "type": "n8n-nodes-base.respondToWebhook", "typeVersion": 1.1, "position": [1560, 300],
-      "parameters": { "respondWith": "text", "responseBody": "ok", "options": { "responseCode": 200 } }
+      "id": "respond",
+      "name": "Respond 200",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1560,
+        300
+      ],
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "ok",
+        "options": {
+          "responseCode": 200
+        }
+      }
     }
   ],
   "connections": {
-    "Stripe Webhook":           { "main": [[{ "node": "Verify Stripe Signature", "type": "main", "index": 0 }]] },
-    "Verify Stripe Signature":  { "main": [[{ "node": "Route by Event Type", "type": "main", "index": 0 }]] },
-    "Route by Event Type": {
+    "Stripe Webhook": {
       "main": [
-        [{ "node": "Map Checkout Data",      "type": "main", "index": 0 }],
-        [{ "node": "Map Subscription Update","type": "main", "index": 0 }],
-        [{ "node": "Map Cancellation",       "type": "main", "index": 0 }],
-        [{ "node": "Map Payment Failed",     "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Verify Stripe Signature",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
-    "Map Checkout Data":       { "main": [[{ "node": "Find Client by Email",    "type": "main", "index": 0 }]] },
-    "Find Client by Email":    { "main": [[{ "node": "Update or Create Client", "type": "main", "index": 0 }]] },
-    "Update or Create Client": { "main": [[{ "node": "Respond 200",             "type": "main", "index": 0 }]] },
-    "Map Subscription Update": { "main": [[{ "node": "Find Client by Stripe ID","type": "main", "index": 0 }]] },
-    "Find Client by Stripe ID":{ "main": [[{ "node": "Update Client Status",    "type": "main", "index": 0 }]] },
-    "Update Client Status":    { "main": [[{ "node": "Respond 200",             "type": "main", "index": 0 }]] },
-    "Map Cancellation":        { "main": [[{ "node": "Find Client (Canceled)",  "type": "main", "index": 0 }]] },
-    "Find Client (Canceled)":  { "main": [[{ "node": "Set Status Canceled",     "type": "main", "index": 0 }]] },
-    "Set Status Canceled":     { "main": [[{ "node": "Respond 200",             "type": "main", "index": 0 }]] },
-    "Map Payment Failed":      { "main": [[{ "node": "Find Client (Failed)",    "type": "main", "index": 0 }]] },
-    "Find Client (Failed)":    { "main": [[{ "node": "Set Status Past Due",     "type": "main", "index": 0 }]] },
-    "Set Status Past Due":     { "main": [[{ "node": "Respond 200",             "type": "main", "index": 0 }]] }
+    "Verify Stripe Signature": {
+      "main": [
+        [
+          {
+            "node": "Route by Event Type",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route by Event Type": {
+      "main": [
+        [
+          {
+            "node": "Map Checkout Data",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Map Subscription Update",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Map Cancellation",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Map Payment Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Map Checkout Data": {
+      "main": [
+        [
+          {
+            "node": "Find Client by Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Client by Email": {
+      "main": [
+        [
+          {
+            "node": "Update or Create Client",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update or Create Client": {
+      "main": [
+        [
+          {
+            "node": "Respond 200",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Map Subscription Update": {
+      "main": [
+        [
+          {
+            "node": "Find Client by Stripe ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Client by Stripe ID": {
+      "main": [
+        [
+          {
+            "node": "Update Client Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Client Status": {
+      "main": [
+        [
+          {
+            "node": "Respond 200",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Map Cancellation": {
+      "main": [
+        [
+          {
+            "node": "Find Client (Canceled)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Client (Canceled)": {
+      "main": [
+        [
+          {
+            "node": "Set Status Canceled",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Status Canceled": {
+      "main": [
+        [
+          {
+            "node": "Respond 200",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Map Payment Failed": {
+      "main": [
+        [
+          {
+            "node": "Find Client (Failed)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Client (Failed)": {
+      "main": [
+        [
+          {
+            "node": "Set Status Past Due",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Status Past Due": {
+      "main": [
+        [
+          {
+            "node": "Respond 200",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
   }
 }

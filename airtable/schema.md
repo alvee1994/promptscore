@@ -1,4 +1,4 @@
-# Prompt Score — Airtable Base Schema
+# Shave Of Voice, Checked! — Airtable Base Schema
 
 Three tables. All linked. No extra fields.
 
@@ -96,7 +96,7 @@ competitor_gap = competitor_1_mention_rate - brand_mention_rate
 
 ## Import Instructions
 
-1. Create a new Airtable base named **Prompt Score**
+1. Create a new Airtable base named **Shave Of Voice, Checked!**
 2. Create three tables: **Clients**, **Prompts**, **Results**
 3. Add fields per the schema above
 4. Set up linked fields:

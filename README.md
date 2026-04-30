@@ -1,9 +1,9 @@
-# PromptScore — AI Brand Visibility Monitor
-> **⚠️ Name TBD — confirm domain availability before finalising**
+# Shave Of Voice, Checked!
+> **AI Brand Visibility Monitoring SaaS** — Track your brand mentions across ChatGPT, Perplexity, and Gemini every week.
 
 > *"Is your business invisible to AI? Find out in 60 seconds."*
 >
-> PromptScore runs weekly prompts through ChatGPT, Perplexity, and Gemini, tracks whether your brand appears vs. competitors, and delivers a plain email report every Monday. No dashboard. No onboarding. Just a score in your inbox.
+> SOV Check runs weekly prompts through ChatGPT, Perplexity, and Gemini, tracks whether your brand appears vs. competitors, and delivers a plain email report every Monday. No dashboard. No onboarding. Just a score in your inbox.
 
 ---
 
@@ -35,14 +35,14 @@
 ## Project Structure
 
 ```
-promptscore/
+sovcheck/
 ├── web/
 │   ├── index.html              # Public landing page — deploy via Netlify
 │   ├── robots.txt              # AI crawler permissions
 │   └── sitemap.xml             # SEO sitemap
 ├── netlify.toml                # Netlify build config (publish = web/)
 ├── tally/
-│   └── create_promptscore_forms.py  # Generates Tally.so onboarding forms
+│   └── create_sovcheck_forms.py  # Generates Tally.so onboarding forms
 │                                      # See this file for form schema
 ├── n8n/
 │   ├── workflow.json           # Weekly automation loop
@@ -82,8 +82,8 @@ promptscore/
 ### 1. Clone the repo
 
 ```bash
-git clone https://github.com/alvee1994/promptscore.git
-cd promptscore
+git clone https://github.com/alvee1994/sovcheck.git
+cd sovcheck
 ```
 
 ### 2. Install dependencies
@@ -131,7 +131,7 @@ The public landing page lives at `web/index.html`.
 The onboarding form (brand name, competitor names, prompt set, email) is programmatically generated via:
 
 ```bash
-python tally/create_promptscore_forms.py
+python tally/create_sovcheck_forms.py
 ```
 
 See `tally/create_visara_forms.py` for form field definitions, question order, and Tally API configuration. Update `TALLY_API_KEY` in your `.env` before running.
